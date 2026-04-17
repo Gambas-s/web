@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 환경변수(`OPENAI_API_KEY`, `REDIS_URL` 등)를 코드에 하드코딩하지 않는다.
 
+## 관련 문서
+
+- 디자인 관련 작업 시 `apps/web/DESIGN.md`를 참고한다.
+
 ## 코딩 컨벤션
 
 - **언어:** TypeScript strict mode (frontend & backend 모두)
@@ -26,6 +30,8 @@ gambass/
 │   ├── web/                      # Next.js 15 (Vercel 배포)
 │   │   └── src/
 │   │       ├── app/              # App Router (page.tsx, layout.tsx)
+│   │       │   └── design-system/  # GET /design-system — 시각적 디자인 레퍼런스
+│   │       ├── design/           # tokens.ts (색상·폰트), guidelines.ts (사용 규칙)
 │   │       └── hooks/            # useSession, useSSE, usePostItState
 │   └── server/                   # NestJS (Railway 배포)
 │       └── src/
