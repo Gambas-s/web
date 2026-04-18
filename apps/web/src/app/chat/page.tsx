@@ -171,6 +171,58 @@ export default function ChatPage() {
         >
           gamza
         </span>
+
+        <AnimatePresence>
+          {crumpledCount > 0 && (
+            <motion.button
+              aria-label="버리러가기"
+              onClick={() => router.push("/trash")}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              whileTap={{ scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              style={{
+                position: "absolute",
+                right: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                height: 36,
+                paddingInline: 12,
+                background: "#121211",
+                border: "none",
+                borderRadius: 9999,
+                cursor: "pointer",
+                color: "#FDFDFC",
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                fontFamily: "inherit",
+              }}
+            >
+              버리러가기
+              <span
+                data-testid="crumple-badge"
+                style={{
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: 9999,
+                  background: "#FDFDFC",
+                  color: "#121211",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingInline: 4,
+                }}
+              >
+                {crumpledCount}
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </motion.header>
 
       {/* 메시지 영역 */}

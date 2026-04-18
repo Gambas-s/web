@@ -216,3 +216,44 @@ test("뒤로가기 버튼을 누르면 홈(/)으로 이동한다", () => {
   fireEvent.click(screen.getByRole("button", { name: /뒤로가기/ }));
   expect(mockPush).toHaveBeenCalledWith("/");
 });
+
+// ─── 헤더 버리러가기 버튼 ────────────────────────────────────
+
+test("크럼플 0개면 '버리러가기' 버튼이 보이지 않는다", () => {
+  render(<ChatPage />);
+  expect(screen.queryByRole("button", { name: /버리러가기/ })).toBeNull();
+});
+
+test("크럼플 1개 이상이면 '버리러가기' 버튼이 나타난다", async () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  expect(screen.getByRole("button", { name: /버리러가기/ })).toBeDefined();
+});
+
+test("뱃지에 크럼플 수가 표시된다", async () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  expect(screen.getByTestId("crumple-badge").textContent).toBe("1");
+});
+
+test("'버리러가기' 버튼 클릭 시 /trash로 이동한다", async () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
+  expect(mockPush).toHaveBeenCalledWith("/trash");
+});
