@@ -52,8 +52,8 @@ test("1200ms 후 소각 진행이 1로 증가한다", () => {
   expect(screen.getByText(/1 \/ 3 소각됨/)).toBeDefined();
 });
 
-test("소각 완료 후 /trash-fin으로 이동한다", () => {
+test("소각 완료 후 3초 대기 뒤 /trash-fin으로 이동한다", () => {
   render(<TrashPage />);
-  act(() => { vi.advanceTimersByTime(1200 * 3 + 100); });
+  act(() => { vi.advanceTimersByTime(1200 * 3 + 3000 + 100); });
   expect(mockPush).toHaveBeenCalledWith("/trash-fin");
 });

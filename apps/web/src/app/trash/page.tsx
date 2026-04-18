@@ -12,19 +12,22 @@ function TrashContent() {
   const total = Math.max(1, parseInt(searchParams.get("count") ?? "1", 10));
   const [burned, setBurned] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    let count = 0;
     intervalRef.current = setInterval(() => {
-      setBurned((prev) => {
-        const next = prev + 1;
-        if (next >= total) {
-          clearInterval(intervalRef.current!);
-          router.push("/trash-fin");
-        }
-        return next;
-      });
+      count += 1;
+      setBurned(count);
+      if (count >= total) {
+        clearInterval(intervalRef.current!);
+        timeoutRef.current = setTimeout(() => router.push("/trash-fin"), 3000);
+      }
     }, 1200);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [total, router]);
 
   const progress = Math.min(burned / total, 1);
@@ -93,12 +96,11 @@ function TrashContent() {
         {/* 뽀잉뽀잉 애니메이션 */}
         <motion.div
           animate={{
-            scale: [1, 1.07, 0.94, 1.05, 0.97, 1],
-            rotate: [0, -4, 3, -2, 1, 0],
-            y: [0, -10, 3, -5, 1, 0],
+            scale: [1, 1.06, 0.96, 1.04, 0.98, 1],
+            rotate: [0, 1.5, -1, 1, -0.5, 0],
           }}
           transition={{
-            duration: 1.1,
+            duration: 2.2,
             repeat: Infinity,
             ease: "easeInOut",
           }}
