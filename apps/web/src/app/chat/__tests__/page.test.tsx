@@ -10,14 +10,27 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const mockMotionValue = (initial: number) => {
+  let val = initial;
+  const listeners: Array<(v: number) => void> = [];
+  return {
+    get: () => val,
+    set: (v: number) => { val = v; listeners.forEach(l => l(v)); },
+    on: (_: string, cb: (v: number) => void) => { listeners.push(cb); return () => {}; },
+  };
+};
+
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, animate: _a, initial: _i, transition: _t, exit: _e, whileTap: _w, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
+    div: ({ children, animate: _a, initial: _i, transition: _t, exit: _e, whileTap: _w, style: _s, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
     header: ({ children, animate: _a, initial: _i, transition: _t, ...props }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) => <header {...props}>{children}</header>,
     button: ({ children, onClick, animate: _a, initial: _i, transition: _t, whileTap: _w, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & Record<string, unknown>) => <button onClick={onClick} {...props}>{children}</button>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
+  useMotionValue: (initial: number) => mockMotionValue(initial),
+  useTransform: (_mv: unknown, _input: unknown, _output: unknown) => ({ get: () => _output, set: vi.fn(), on: () => () => {} }),
+  animate: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("next/image", () => ({
@@ -160,7 +173,7 @@ test("Shift+Enter는 전송하지 않고 입력창에 값이 남아있다", () =
 
 // ─── 크럼플 (롱프레스) ────────────────────────────────────────
 
-test("유저 메시지 500ms 롱프레스 시 trash 이미지로 교체된다", async () => {
+test("유저 메시지 500ms 롱프레스 시 종이 뭉치로 교체된다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
@@ -168,7 +181,7 @@ test("유저 메시지 500ms 롱프레스 시 trash 이미지로 교체된다", 
   fireEvent.pointerDown(bubble);
   await act(async () => { vi.advanceTimersByTime(500); });
 
-  expect(screen.getByAltText("crumpled")).toBeDefined();
+  expect(screen.getByTestId("crumpled-ball")).toBeDefined();
   expect(screen.queryByText("스트레스 받아")).toBeNull();
 });
 

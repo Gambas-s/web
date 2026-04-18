@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
 
 type Role = "ai" | "user";
@@ -275,8 +275,8 @@ function Avatar() {
 }
 
 // Design system motion tokens
-const SQUISH = [0.87, 0, 0.13, 1] as const;
-const BOUNCE = [0.34, 1.56, 0.64, 1] as const;
+const SQUISH: [number, number, number, number] = [0.87, 0, 0.13, 1];
+const BOUNCE: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 
 function MessageBubble({
   message,
@@ -286,18 +286,34 @@ function MessageBubble({
   onCrumple: () => void;
 }) {
   const isAI = message.role === "ai";
-  const controls = useAnimation();
+  const filterId = useId().replace(/:/g, "");
+  const dispMapRef = useRef<SVGFEDisplacementMapElement>(null);
+
+  // pressProgress: 0 = 정상, 1 = 완전히 구겨짐
+  const pressProgress = useMotionValue(0);
+
+  // SVG 변위 필터를 pressProgress에 동기화
+  useEffect(() => {
+    return pressProgress.on("change", (v) => {
+      if (dispMapRef.current) {
+        dispMapRef.current.setAttribute("scale", String(v * 52));
+      }
+    });
+  }, [pressProgress]);
+
+  const bubbleScale = useTransform(pressProgress, [0, 0.7, 1], [1, 0.78, 0.38]);
+  const bubbleRadius = useTransform(pressProgress, [0, 0.5, 1], [
+    isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
+    "28px",
+    "50%",
+  ]);
+  const bubbleSkewX = useTransform(pressProgress, [0, 0.3, 0.6, 1], [0, -4, 3, 0]);
+  const bubbleSkewY = useTransform(pressProgress, [0, 0.4, 0.7, 1], [0, 2, -3, 0]);
 
   const handleLongPress = useCallback(async () => {
-    // squish: 납작해지며 사라짐 (--mo-squish easing)
-    await controls.start({
-      scaleX: [1, 1.08, 0],
-      scaleY: [1, 0.55, 0],
-      opacity: [1, 1, 0],
-      transition: { duration: 0.38, ease: SQUISH },
-    });
+    await animate(pressProgress, 1, { duration: 0.32, ease: SQUISH });
     onCrumple();
-  }, [controls, onCrumple]);
+  }, [pressProgress, onCrumple]);
 
   const longPress = useLongPress({
     onLongPress: handleLongPress,
@@ -305,35 +321,45 @@ function MessageBubble({
     disabled: isAI || !!message.crumpled || !!message.pending,
   });
 
-  // 누르는 동안 서서히 찌그러짐
   useEffect(() => {
     if (longPress.isPressing) {
-      controls.start({
-        scale: 0.88,
-        transition: { duration: 0.5, ease: "linear" },
-      });
-    } else {
-      controls.start({
-        scale: 1,
-        transition: { duration: 0.22, ease: BOUNCE },
-      });
+      animate(pressProgress, 0.82, { duration: 0.5, ease: "linear" });
+    } else if (!message.crumpled) {
+      animate(pressProgress, 0, { duration: 0.28, ease: BOUNCE });
     }
-  }, [longPress.isPressing, controls]);
+  }, [longPress.isPressing, pressProgress, message.crumpled]);
 
   if (message.crumpled) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.3, rotate: -15 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        transition={{ duration: 0.42, ease: BOUNCE }}
-        style={{ display: "flex", justifyContent: "flex-end", paddingRight: 4 }}
+        initial={{ scale: 0.4, rotate: -20, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ duration: 0.45, ease: BOUNCE }}
+        data-testid="crumpled-ball"
+        style={{ display: "flex", justifyContent: "flex-end", paddingRight: 8 }}
       >
-        <Image
-          src="/trash-can.png"
-          alt="crumpled"
-          width={64}
-          height={64}
-          style={{ objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.14))" }}
+        {/* 종이 뭉치: SVG 필터로 울퉁불퉁한 질감 */}
+        <svg width="0" height="0" style={{ position: "absolute" }}>
+          <defs>
+            <filter id={`crumpled-static-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.065 0.075" numOctaves="4" seed="8" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: isAI
+              ? "radial-gradient(circle at 38% 35%, #fff 0%, #e8e8e6 55%, #d4d4d0 100%)"
+              : "radial-gradient(circle at 38% 35%, #3a3a38 0%, #1e1e1d 55%, #0f0f0e 100%)",
+            boxShadow: isAI
+              ? "inset -3px -3px 6px rgba(0,0,0,0.15), inset 2px 2px 5px rgba(255,255,255,0.7), 0 3px 10px rgba(0,0,0,0.12)"
+              : "inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 5px rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.2)",
+            filter: `url(#crumpled-static-${filterId})`,
+          }}
         />
       </motion.div>
     );
@@ -353,13 +379,34 @@ function MessageBubble({
       }}
     >
       {isAI && <Avatar />}
+
+      {/* SVG 변위 필터 (꾸기기 텍스처) */}
+      <svg width="0" height="0" style={{ position: "absolute" }}>
+        <defs>
+          <filter id={`crumple-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04 0.05" numOctaves="4" seed="5" result="noise" />
+            <feDisplacementMap
+              ref={dispMapRef}
+              in="SourceGraphic"
+              in2="noise"
+              scale="0"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
+
       <motion.div
-        animate={controls}
         {...longPress}
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
-          borderRadius: isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
+          borderRadius: bubbleRadius,
+          scale: bubbleScale,
+          skewX: bubbleSkewX,
+          skewY: bubbleSkewY,
+          filter: `url(#crumple-${filterId})`,
           fontSize: 15,
           lineHeight: 1.6,
           letterSpacing: "-0.005em",
