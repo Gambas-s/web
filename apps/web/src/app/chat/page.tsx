@@ -194,19 +194,33 @@ export default function ChatPage() {
                 padding: 4,
               }}
             >
-              <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
+              <motion.div
+                key={crumpledCount}
+                animate={{ rotate: [-6, 8, -5, 4, 0], scale: [1, 0.82, 1.18, 0.94, 1] }}
+                transition={{ duration: 0.42, ease: "easeOut" }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
+              </motion.div>
               <motion.span
                 key={crumpledCount}
-                initial={{ scale: 1.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                initial={{ scale: 1.8, opacity: 0, y: -4 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 600, damping: 18 }}
                 data-testid="crumple-badge"
                 style={{
-                  fontSize: 14,
+                  minWidth: 20,
+                  height: 20,
+                  borderRadius: 9999,
+                  background: "#121211",
+                  color: "#FDFDFC",
+                  fontSize: 11,
                   fontWeight: 700,
-                  color: "#121211",
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingInline: 5,
+                  letterSpacing: "-0.01em",
                 }}
               >
                 {crumpledCount}
