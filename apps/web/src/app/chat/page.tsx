@@ -38,9 +38,10 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [hintShown, setHintShown] = useState(() =>
-    typeof window !== "undefined" && !!localStorage.getItem("gambass_hint_shown")
-  );
+  const [hintShown, setHintShown] = useState(true);
+  useEffect(() => {
+    setHintShown(!!localStorage.getItem("gambass_hint_shown"));
+  }, []);
   const [hintVisible, setHintVisible] = useState(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -107,6 +108,7 @@ export default function ChatPage() {
   }, [input, isStreaming]);
 
   const crumpledCount = messages.filter((m) => m.crumpled).length;
+  const firstUserMsgId = messages.find((m) => m.role === "user")?.id;
   const trashControls = useAnimation();
 
   useEffect(() => {
@@ -271,8 +273,8 @@ export default function ChatPage() {
         }}
       >
         <AnimatePresence initial={false}>
-          {messages.map((msg, i) => {
-            const isFirstUserMsg = msg.role === "user" && !messages.slice(0, i).some((m) => m.role === "user");
+          {messages.map((msg) => {
+            const isFirstUserMsg = msg.id === firstUserMsgId;
             return (
               <React.Fragment key={msg.id}>
                 <MessageBubble
@@ -531,7 +533,7 @@ function MessageBubble({
           wordBreak: "break-word",
           userSelect: "none",
           WebkitUserSelect: "none",
-          touchAction: "none",
+          touchAction: "pan-y",
           cursor: isAI ? "default" : "pointer",
           ...(isAI
             ? {

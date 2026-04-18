@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 interface UseLongPressOptions {
   onLongPress: () => void;
@@ -20,6 +20,10 @@ export function useLongPress({
       clearTimeout(timer.current);
       timer.current = null;
     }
+  }, []);
+
+  useEffect(() => {
+    return () => { if (timer.current) clearTimeout(timer.current); };
   }, []);
 
   const onPointerDown = useCallback(() => {
