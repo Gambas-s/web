@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import Link from 'next/link';
 import { useRef, useState } from 'react';
 import {
   colorGuidelines,
@@ -718,7 +719,7 @@ export default function DesignSystemPage() {
             tokens.ts → guidelines.ts → globals.css → this page
           </p>
         </div>
-        <a href="/" style={{
+        <Link href="/" style={{
           display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 20px',
           borderRadius: 9999,
           border: '1px solid rgba(255,255,255,0.15)',
@@ -728,7 +729,7 @@ export default function DesignSystemPage() {
           transition: 'color var(--mo-quick), border-color var(--mo-quick)',
         }}>
           → 홈으로
-        </a>
+        </Link>
       </footer>
     </div>
   );
