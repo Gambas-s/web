@@ -310,7 +310,10 @@ function MessageBubble({
   const bubbleSkewX = useTransform(pressProgress, [0, 0.3, 0.6, 1], [0, -4, 3, 0]);
   const bubbleSkewY = useTransform(pressProgress, [0, 0.4, 0.7, 1], [0, 2, -3, 0]);
 
+  const isCrumpling = useRef(false);
+
   const handleLongPress = useCallback(async () => {
+    isCrumpling.current = true;
     await animate(pressProgress, 1, { duration: 0.32, ease: SQUISH });
     onCrumple();
   }, [pressProgress, onCrumple]);
@@ -324,7 +327,7 @@ function MessageBubble({
   useEffect(() => {
     if (longPress.isPressing) {
       animate(pressProgress, 0.82, { duration: 0.5, ease: "linear" });
-    } else if (!message.crumpled) {
+    } else if (!message.crumpled && !isCrumpling.current) {
       animate(pressProgress, 0, { duration: 0.28, ease: BOUNCE });
     }
   }, [longPress.isPressing, pressProgress, message.crumpled]);
