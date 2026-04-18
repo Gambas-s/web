@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const router = useRouter();
@@ -19,10 +20,14 @@ export default function Home() {
         paddingBottom: 48,
         background: "#FDFDFC",
         boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       {/* 앱 이름 */}
-      <span
+      <motion.span
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
         style={{
           fontSize: 14,
           fontWeight: 500,
@@ -31,22 +36,35 @@ export default function Home() {
         }}
       >
         감바쓰
-      </span>
+      </motion.span>
 
-      {/* 3D 쓰레기통 */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Image
-          src="/trash-can.png"
-          alt="쓰레기통"
-          width={280}
-          height={280}
-          priority
-          style={{ objectFit: "contain" }}
-        />
-      </div>
+      {/* 3D 쓰레기통 — 둥실둥실 float */}
+      <motion.div
+        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.1 }}
+      >
+        <motion.div
+          animate={{ y: [0, -10, 0] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Image
+            src="/trash-can.png"
+            alt="쓰레기통"
+            width={280}
+            height={280}
+            priority
+            style={{ objectFit: "contain" }}
+          />
+        </motion.div>
+      </motion.div>
 
       {/* 텍스트 + 버튼 */}
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -88,8 +106,10 @@ export default function Home() {
           AI 쓰레기통
         </p>
 
-        <button
+        <motion.button
           onClick={() => router.push("/chat")}
+          whileTap={{ scale: 0.96 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
           style={{
             marginTop: 16,
             width: "100%",
@@ -114,8 +134,8 @@ export default function Home() {
         >
           <span style={{ fontSize: 18 }}>🗑</span>
           버리러가기
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
     </main>
   );
 }
