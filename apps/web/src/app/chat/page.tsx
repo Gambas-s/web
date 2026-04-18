@@ -10,6 +10,7 @@ interface Message {
   id: string;
   role: Role;
   content: string;
+  pending?: boolean;
 }
 
 const MOCK_RESPONSES = [
@@ -33,46 +34,44 @@ export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  }, [messages]);
 
   const sendMessage = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || isTyping) return;
+    if (!trimmed || isStreaming) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: trimmed,
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
+    const aiId = (Date.now() + 1).toString();
+    // AI 버블을 pending 상태로 즉시 추가 — 위치 고정
+    const aiMsg: Message = { id: aiId, role: "ai", content: "", pending: true };
+
+    setMessages((prev) => [...prev, userMsg, aiMsg]);
     setInput("");
-    setIsTyping(true);
+    setIsStreaming(true);
 
     const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
 
     setTimeout(() => {
-      const aiId = (Date.now() + 1).toString();
-      const aiMsg: Message = { id: aiId, role: "ai", content: "" };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-
       let i = 0;
       const interval = setInterval(() => {
         i++;
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === aiId ? { ...m, content: response.slice(0, i) } : m
+            m.id === aiId ? { ...m, content: response.slice(0, i), pending: false } : m
           )
         );
-        if (i >= response.length) clearInterval(interval);
+        if (i >= response.length) {
+          clearInterval(interval);
+          setIsStreaming(false);
+        }
       }, 35);
     }, 600);
-  }, [input, isTyping]);
+  }, [input, isStreaming]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -162,20 +161,6 @@ export default function ChatPage() {
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
           ))}
-
-          {isTyping && (
-            <motion.div
-              key="typing"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-              style={{ display: "flex", alignItems: "flex-end", gap: 10 }}
-            >
-              <Avatar />
-              <TypingIndicator />
-            </motion.div>
-          )}
         </AnimatePresence>
         <div ref={bottomRef} />
       </section>
@@ -202,7 +187,7 @@ export default function ChatPage() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="메세지 입력.."
-          disabled={isTyping}
+          disabled={isStreaming}
           style={{
             flex: 1,
             height: 44,
@@ -220,8 +205,8 @@ export default function ChatPage() {
         <motion.button
           aria-label="전송"
           onClick={sendMessage}
-          disabled={!input.trim() || isTyping}
-          whileTap={input.trim() && !isTyping ? { scale: 0.92 } : {}}
+          disabled={!input.trim() || isStreaming}
+          whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
           style={{
             width: 44,
@@ -232,8 +217,8 @@ export default function ChatPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: input.trim() && !isTyping ? "pointer" : "default",
-            opacity: input.trim() && !isTyping ? 1 : 0.4,
+            cursor: input.trim() && !isStreaming ? "pointer" : "default",
+            opacity: input.trim() && !isStreaming ? 1 : 0.4,
             transition: "opacity 0.15s ease",
             flexShrink: 0,
           }}
@@ -281,7 +266,7 @@ function MessageBubble({ message }: { message: Message }) {
       <div
         style={{
           maxWidth: "72%",
-          padding: "12px 16px",
+          padding: message.pending ? "14px 18px" : "12px 16px",
           borderRadius: 20,
           fontSize: 15,
           lineHeight: 1.6,
@@ -292,8 +277,7 @@ function MessageBubble({ message }: { message: Message }) {
             ? {
                 background: "#FFFFFF",
                 color: "#3A3A38",
-                boxShadow:
-                  "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
               }
             : {
                 background: "#121211",
@@ -301,41 +285,21 @@ function MessageBubble({ message }: { message: Message }) {
               }),
         }}
       >
-        {message.content}
+        {message.pending ? <DotsIndicator /> : message.content}
       </div>
     </motion.div>
   );
 }
 
-function TypingIndicator() {
+function DotsIndicator() {
   return (
-    <div
-      style={{
-        padding: "14px 18px",
-        borderRadius: 20,
-        background: "#FFFFFF",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-        display: "flex",
-        gap: 4,
-        alignItems: "center",
-      }}
-    >
+    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
           animate={{ y: [0, -4, 0] }}
-          transition={{
-            duration: 0.6,
-            repeat: Infinity,
-            delay: i * 0.15,
-            ease: "easeInOut",
-          }}
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 9999,
-            background: "#9E9E9B",
-          }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+          style={{ width: 6, height: 6, borderRadius: 9999, background: "#9E9E9B" }}
         />
       ))}
     </div>
