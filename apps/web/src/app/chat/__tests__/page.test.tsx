@@ -247,7 +247,7 @@ test("뱃지에 크럼플 수가 표시된다", async () => {
   expect(screen.getByTestId("crumple-badge").textContent).toBe("1");
 });
 
-test("'버리러가기' 버튼 클릭 시 /trash로 이동한다", async () => {
+test("'버리러가기' 버튼 클릭 시 /trash?count=N으로 이동한다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
@@ -256,5 +256,35 @@ test("'버리러가기' 버튼 클릭 시 /trash로 이동한다", async () => {
   await act(async () => { vi.advanceTimersByTime(500); });
 
   fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
-  expect(mockPush).toHaveBeenCalledWith("/trash");
+  expect(mockPush).toHaveBeenCalledWith("/trash?count=1");
+});
+
+
+// ─── 온보딩 힌트 ─────────────────────────────────────────────
+
+test("첫 유저 메시지 전송 후 롱프레스 힌트가 나타난다", () => {
+  localStorage.removeItem("gambass_hint_shown");
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+  expect(screen.getByTestId("longpress-hint")).toBeDefined();
+});
+
+test("localStorage에 gambass_hint_shown이 있으면 힌트가 표시되지 않는다", () => {
+  localStorage.setItem("gambass_hint_shown", "1");
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+  expect(screen.queryByTestId("longpress-hint")).toBeNull();
+  localStorage.removeItem("gambass_hint_shown");
+});
+
+test("크럼플 성공 시 힌트가 사라진다", async () => {
+  localStorage.removeItem("gambass_hint_shown");
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  expect(screen.queryByTestId("longpress-hint")).toBeNull();
 });

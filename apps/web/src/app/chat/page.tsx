@@ -38,6 +38,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [hintShown, setHintShown] = useState(() =>
+    typeof window !== "undefined" && !!localStorage.getItem("gambass_hint_shown")
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
@@ -109,7 +112,11 @@ export default function ChatPage() {
     setMessages((prev) =>
       prev.map((m) => (m.id === id ? { ...m, crumpled: true } : m))
     );
-  }, []);
+    if (!hintShown) {
+      setHintShown(true);
+      localStorage.setItem("gambass_hint_shown", "1");
+    }
+  }, [hintShown]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -186,7 +193,7 @@ export default function ChatPage() {
           {crumpledCount > 0 && (
             <motion.button
               aria-label="버리러가기"
-              onClick={() => router.push("/trash")}
+              onClick={() => router.push(`/trash?count=${crumpledCount}`)}
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
@@ -259,6 +266,41 @@ export default function ChatPage() {
             />
           ))}
         </AnimatePresence>
+
+        <AnimatePresence>
+          {!hintShown && crumpledCount === 0 && messages.some((m) => m.role === "user") && (
+            <motion.div
+              data-testid="longpress-hint"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12 }}
+            >
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  fontSize: 12,
+                  color: "#9E9E9B",
+                  letterSpacing: "-0.01em",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                꾹 눌러봐
+                <motion.span
+                  animate={{ y: [0, 3, 0] }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  👇
+                </motion.span>
+              </motion.span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div ref={bottomRef} />
       </section>
 
