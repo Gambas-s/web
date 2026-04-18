@@ -35,7 +35,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -198,7 +197,6 @@ export default function ChatPage() {
         }}
       >
         <input
-          ref={inputRef}
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
