@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 관련 문서
 
 - 디자인 관련 작업 시 `apps/web/DESIGN.md`를 참고한다.
-- 프로그래밍 시 `AGENTS.md`를 항상 읽고 해당 순서대로 진행한다.
+- 프로그래밍 시 `/Users/gabin/Documents/Projects/gambass/AGENTS.md`를 항상 읽고 해당 순서대로 진행한다.
 
 ## 코딩 컨벤션
 
