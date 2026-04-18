@@ -1,5 +1,7 @@
-import { expect, test, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { expect, test, vi, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+
+afterEach(cleanup);
 import userEvent from "@testing-library/user-event";
 import Home from "../page";
 
