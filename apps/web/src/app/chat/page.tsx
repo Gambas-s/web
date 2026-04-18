@@ -383,19 +383,19 @@ function MessageBubble({
     onCrumple();
   }, [pressProgress, onCrumple]);
 
-  const longPress = useLongPress({
+  const { isPressing, ...longPressHandlers } = useLongPress({
     onLongPress: handleLongPress,
     duration: 500,
     disabled: isAI || !!message.crumpled || !!message.pending,
   });
 
   useEffect(() => {
-    if (longPress.isPressing) {
+    if (isPressing) {
       animate(pressProgress, 0.82, { duration: 0.5, ease: "linear" });
     } else if (!message.crumpled && !isCrumpling.current) {
       animate(pressProgress, 0, { duration: 0.28, ease: BOUNCE });
     }
-  }, [longPress.isPressing, pressProgress, message.crumpled]);
+  }, [isPressing, pressProgress, message.crumpled]);
 
   if (message.crumpled) {
     return (
@@ -452,7 +452,7 @@ function MessageBubble({
       </svg>
 
       <motion.div
-        {...longPress}
+        {...longPressHandlers}
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
