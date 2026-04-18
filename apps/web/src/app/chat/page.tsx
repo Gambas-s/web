@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate, useAnimation } from "framer-motion";
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
 
 type Role = "ai" | "user";
@@ -271,47 +271,48 @@ export default function ChatPage() {
         }}
       >
         <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              onCrumple={() => crumpleMessage(msg.id)}
-            />
-          ))}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {hintVisible && (
-            <motion.div
-              data-testid="longpress-hint"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-              style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12 }}
-            >
-              <motion.span
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  fontSize: 12,
-                  color: "#9E9E9B",
-                  letterSpacing: "-0.01em",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                꾹 눌러봐
-                <motion.span
-                  animate={{ y: [0, 3, 0] }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  👇
-                </motion.span>
-              </motion.span>
-            </motion.div>
-          )}
+          {messages.map((msg, i) => {
+            const isFirstUserMsg = msg.role === "user" && !messages.slice(0, i).some((m) => m.role === "user");
+            return (
+              <React.Fragment key={msg.id}>
+                <MessageBubble
+                  message={msg}
+                  onCrumple={() => crumpleMessage(msg.id)}
+                />
+                {isFirstUserMsg && hintVisible && (
+                  <motion.div
+                    data-testid="longpress-hint"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+                  >
+                    <motion.span
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                      style={{
+                        fontSize: 12,
+                        color: "#9E9E9B",
+                        letterSpacing: "-0.01em",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      꾹 눌러봐
+                      <motion.span
+                        animate={{ y: [0, 3, 0] }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        👆
+                      </motion.span>
+                    </motion.span>
+                  </motion.div>
+                )}
+              </React.Fragment>
+            );
+          })}
         </AnimatePresence>
 
         <div ref={bottomRef} />
