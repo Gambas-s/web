@@ -91,13 +91,3 @@ PORT=4000
 ```
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
-
-## 도메인 컨텍스트
-
-- **감바쓰:** "감정 배설" 서비스. 로그인 없이 익명으로 AI 친구에게 스트레스를 털어놓는 서비스.
-- **포스트잇:** 채팅창 UI 단위. Framer Motion으로 드래그 가능, 쓰레기통에 드롭하면 세션 삭제.
-- **쓰레기통 비우기:** 세션 완전 삭제 액션 → `DELETE /api/session` → Redis hard delete → 랜딩 복귀.
-- **이모지 토큰:** AI 응답 내 `:angry:` 형식 토큰을 `public/images/emojis/*.png` 로 클라이언트에서 치환.
-- **페르소나:** 거친 말투의 친구. 부적절한 요청엔 "나 바쁘니까 나중에 해"로 거절.
-- **세션 복구:** 탭 재접속 시 `sessionStorage` 저장값 + `GET /api/session/check` 로 유효성 검증 후 복구.
-- **슬라이딩 세션:** 메시지 전송마다 Redis TTL 600초 갱신 (`SessionService.appendMessage`).

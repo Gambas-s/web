@@ -1,68 +1,22 @@
 "use client";
 
-import { useRef, useState, useCallback, type CSSProperties } from "react";
-import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
+import { useRef, useState, useCallback } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  animate,
+} from "framer-motion";
 import { useRouter } from "next/navigation";
 import { MessageDock } from "@/components/ui/message-dock";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+const POST_IT_SIZE = 180;
+const INITIAL_STACK = 8;
 
-interface PostItData {
-  id: number;
-  style: CSSProperties;
-  rotation: number;
-  color: string;
-  lines: string[];
-}
+// ─── TrashCan3D ───────────────────────────────────────────────────────────────
+// Pseudo-3D cylinder viewed at ~75° elevation: oval rim + body with shading
 
-const POST_ITS: PostItData[] = [
-  {
-    id: 1,
-    style: { top: "8%", left: "4%" },
-    rotation: -8,
-    color: "#FFDF1E",
-    lines: ["진짜 짜증나", "왜 이러는 거야"],
-  },
-  {
-    id: 2,
-    style: { top: "6%", right: "6%" },
-    rotation: 5,
-    color: "#FFB3C6",
-    lines: ["스트레스", "죽겠어 진짜"],
-  },
-  {
-    id: 3,
-    style: { top: "42%", left: "2%" },
-    rotation: -3,
-    color: "#A8E6CF",
-    lines: ["너무 힘들어"],
-  },
-  {
-    id: 4,
-    style: { bottom: "14%", left: "6%" },
-    rotation: 7,
-    color: "#B5D5F5",
-    lines: ["왜 나만", "이래야 해"],
-  },
-  {
-    id: 5,
-    style: { bottom: "10%", right: "4%" },
-    rotation: -5,
-    color: "#FFD5A8",
-    lines: ["이제 지쳤어"],
-  },
-  {
-    id: 6,
-    style: { top: "12%", left: "40%" },
-    rotation: 3,
-    color: "#FFDF1E",
-    lines: ["아 몰라", "다 싫어"],
-  },
-];
-
-// ─── TrashCan ──────────────────────────────────────────────────────────────────
-
-function TrashCan({
+function TrashCan3D({
   isOver,
   trashRef,
 }: {
@@ -70,104 +24,133 @@ function TrashCan({
   trashRef: React.RefObject<HTMLDivElement | null>;
 }) {
   return (
+    // Static wrapper — bounding rect used for drop detection, unaffected by scale
     <div
       ref={trashRef}
-      style={{ position: "relative", width: 180, height: 180, zIndex: 3 }}
+      style={{ position: "relative", width: 130, height: 195, zIndex: 3 }}
     >
       <motion.div
-        animate={{ scale: isOver ? 1.18 : 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 20 }}
-        style={{ width: "100%", height: "100%", position: "relative" }}
+        animate={{ scale: isOver ? 1.1 : 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22 }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          transformOrigin: "center 62%",
+        }}
       >
-        {/* Metallic rim — conic gradient simulates cylindrical sheen */}
+        {/* Cast shadow */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
+            bottom: 0,
+            left: "18%",
+            right: "18%",
+            height: 18,
             borderRadius: "50%",
+            background: "rgba(0,0,0,0.12)",
+            filter: "blur(10px)",
+            transform: "translateY(6px)",
+          }}
+        />
+
+        {/* Cylinder body — horizontal gradient gives cylindrical sheen */}
+        <div
+          style={{
+            position: "absolute",
+            top: 26,
+            left: 0,
+            right: 0,
+            bottom: 14,
+            borderRadius: "5px 5px 52% 52% / 5px 5px 14px 14px",
             background: isOver
-              ? "conic-gradient(from 100deg, #EF4444 0%, #FCA5A5 20%, #EF4444 45%, #DC2626 70%, #EF4444 100%)"
-              : "conic-gradient(from 100deg, #9CA3AF 0%, #E5E7EB 20%, #9CA3AF 45%, #6B7280 70%, #9CA3AF 100%)",
+              ? "linear-gradient(to right, #991B1B 0%, #EF4444 33%, #FCA5A5 50%, #EF4444 67%, #991B1B 100%)"
+              : "linear-gradient(to right, #27272A 0%, #71717A 33%, #D1D5DB 50%, #71717A 67%, #27272A 100%)",
+            overflow: "hidden",
+            transition: "background 0.25s",
             boxShadow: isOver
-              ? "0 20px 60px rgba(239,68,68,0.55), 0 4px 16px rgba(239,68,68,0.3)"
-              : "0 20px 60px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.2)",
-            transition: "background 0.25s, box-shadow 0.25s",
+              ? "0 12px 40px rgba(239,68,68,0.3)"
+              : "0 12px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
           }}
-        />
-        {/* Inner rim groove */}
+        >
+          {/* Vertical specular highlight */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: "44%",
+              width: "13%",
+              background: "rgba(255,255,255,0.14)",
+            }}
+          />
+          {/* Horizontal ridges */}
+          {[0.3, 0.58].map((pos, i) => (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: `${pos * 100}%`,
+                height: 4,
+                background: "rgba(0,0,0,0.15)",
+                boxShadow: "0 2px 0 rgba(255,255,255,0.06)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Outer rim — top ellipse of the cylinder */}
         <div
           style={{
             position: "absolute",
-            inset: 14,
-            borderRadius: "50%",
-            background: isOver ? "#7F1D1D" : "#0F172A",
-            boxShadow: "inset 0 6px 28px rgba(0,0,0,0.95)",
-            transition: "background 0.25s",
-          }}
-        />
-        {/* Opening void — looking down into the can */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 20,
+            top: 13,
+            left: -6,
+            right: -6,
+            height: 24,
             borderRadius: "50%",
             background: isOver
-              ? "radial-gradient(ellipse at 38% 30%, #991B1B 0%, #450A0A 100%)"
-              : "radial-gradient(ellipse at 38% 30%, #334155 0%, #020617 100%)",
+              ? "linear-gradient(to bottom, #FCA5A5, #DC2626)"
+              : "linear-gradient(to bottom, #D4D4D8, #52525B)",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.28)",
+            zIndex: 2,
             transition: "background 0.25s",
           }}
         />
-        {/* Specular highlight */}
+
+        {/* Opening — dark void inside the rim */}
         <div
           style={{
             position: "absolute",
-            inset: 20,
+            top: 15,
+            left: 3,
+            right: 3,
+            height: 20,
             borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at 28% 22%, rgba(255,255,255,0.1) 0%, transparent 50%)",
-            pointerEvents: "none",
+            background: isOver
+              ? "radial-gradient(ellipse at 40% 38%, #7F1D1D, #3B0A0A)"
+              : "radial-gradient(ellipse at 40% 38%, #18181B, #000)",
+            boxShadow: "inset 0 5px 18px rgba(0,0,0,0.95)",
+            zIndex: 3,
+            transition: "background 0.25s",
           }}
         />
       </motion.div>
-
-      {/* Label */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: -28,
-          left: "50%",
-          transform: "translateX(-50%)",
-          whiteSpace: "nowrap",
-          fontSize: 12,
-          fontWeight: 500,
-          color: "rgba(255,255,255,0.55)",
-          opacity: isOver ? 0 : 1,
-          transition: "opacity 0.2s",
-        }}
-      >
-        여기에 버려
-      </div>
     </div>
   );
 }
 
-// ─── PostItItem ────────────────────────────────────────────────────────────────
+// ─── PostItSheet ──────────────────────────────────────────────────────────────
 
-interface PostItItemProps {
-  data: PostItData;
-  trashRef: React.RefObject<HTMLDivElement | null>;
-  isHidden: boolean;
-  onDropped: () => void;
-  onDragOverChange: (over: boolean) => void;
-}
-
-function PostItItem({
-  data,
+function PostItSheet({
   trashRef,
-  isHidden,
   onDropped,
   onDragOverChange,
-}: PostItItemProps) {
+}: {
+  trashRef: React.RefObject<HTMLDivElement | null>;
+  onDropped: () => void;
+  onDragOverChange: (v: boolean) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -210,33 +193,30 @@ function PostItItem({
         x,
         y,
         position: "absolute",
-        ...data.style,
+        top: 0,
+        left: 0,
         touchAction: "none",
-        zIndex: dragging ? 10 : 2,
+        zIndex: dragging ? 20 : 8,
         cursor: dragging ? "grabbing" : "grab",
-        pointerEvents: isHidden ? "none" : "auto",
       }}
-      initial={{ opacity: 0, scale: 0.85, rotate: data.rotation }}
-      animate={{
-        opacity: isHidden ? 0 : 1,
-        scale: isHidden ? 0.5 : 1,
-        rotate: data.rotation,
-      }}
-      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.85, y: 10 }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
       onDragStart={() => setDragging(true)}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
-      whileDrag={{ scale: 1.06 }}
+      whileDrag={{ scale: 1.04 }}
     >
       <div
         style={{
-          width: 160,
-          height: 160,
-          background: data.color,
+          width: POST_IT_SIZE,
+          height: POST_IT_SIZE,
+          background: "#F4F4F2", // sunken
           borderRadius: 4,
           boxShadow: dragging
-            ? "0 20px 48px rgba(0,0,0,0.25)"
-            : "3px 5px 18px rgba(0,0,0,0.18), 1px 2px 0 rgba(0,0,0,0.06)",
+            ? "0 20px 48px rgba(0,0,0,0.18)"
+            : "2px 4px 14px rgba(0,0,0,0.1), 0 1px 0 rgba(0,0,0,0.05)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -247,45 +227,119 @@ function PostItItem({
         {/* Adhesive strip */}
         <div
           style={{
-            height: 22,
-            background: "rgba(0,0,0,0.1)",
+            height: 20,
+            background: "rgba(0,0,0,0.06)",
             flexShrink: 0,
           }}
         />
-        {/* Lined content */}
-        <div style={{ flex: 1, position: "relative", padding: "8px 12px" }}>
+        {/* Lined content area */}
+        <div style={{ flex: 1, position: "relative", padding: "10px 14px" }}>
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
               style={{
                 position: "absolute",
-                left: 12,
-                right: 12,
-                top: 8 + i * 26,
+                left: 14,
+                right: 14,
+                top: 10 + i * 26,
                 height: 1,
-                background: "rgba(0,0,0,0.1)",
+                background: "rgba(0,0,0,0.09)",
               }}
             />
           ))}
           <div style={{ position: "relative", zIndex: 1 }}>
-            {data.lines.map((line, i) => (
-              <p
-                key={i}
-                style={{
-                  fontSize: 13,
-                  lineHeight: "26px",
-                  fontWeight: 500,
-                  color: "#18181B",
-                  margin: 0,
-                }}
-              >
-                {line}
-              </p>
-            ))}
+            <p
+              style={{
+                fontSize: 13,
+                lineHeight: "26px",
+                fontWeight: 500,
+                color: "#3F3F46",
+                margin: 0,
+              }}
+            >
+              나쁜 감정은
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                lineHeight: "26px",
+                fontWeight: 500,
+                color: "#3F3F46",
+                margin: 0,
+              }}
+            >
+              쓰레기통으로
+            </p>
           </div>
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// ─── PostItStack ──────────────────────────────────────────────────────────────
+
+function PostItStack({
+  count,
+  sheetKey,
+  trashRef,
+  onDropped,
+  onDragOverChange,
+}: {
+  count: number;
+  sheetKey: number;
+  trashRef: React.RefObject<HTMLDivElement | null>;
+  onDropped: () => void;
+  onDragOverChange: (v: boolean) => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: POST_IT_SIZE,
+        height: POST_IT_SIZE + count * 2 + 12,
+      }}
+    >
+      {/* Visible layer edges — simulates notepad thickness */}
+      {[...Array(count)].map((_, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            top: POST_IT_SIZE + i * 2,
+            left: i * 0.3,
+            right: -i * 0.3,
+            height: 2,
+            background: i % 2 === 0 ? "#DCDCE0" : "#E8E8EA",
+            borderRadius: "0 0 1px 1px",
+          }}
+        />
+      ))}
+      {/* Cardboard backing */}
+      <div
+        style={{
+          position: "absolute",
+          top: POST_IT_SIZE + count * 2,
+          left: 2,
+          right: -2,
+          height: 8,
+          background: "#C4C4C0",
+          borderRadius: "0 0 3px 3px",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+        }}
+      />
+      {/* Draggable top sheet */}
+      <AnimatePresence mode="wait">
+        {count > 0 && (
+          <PostItSheet
+            key={sheetKey}
+            trashRef={trashRef}
+            onDropped={onDropped}
+            onDragOverChange={onDragOverChange}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -295,37 +349,24 @@ export default function Home() {
   const router = useRouter();
   const trashRef = useRef<HTMLDivElement>(null);
 
-  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
-  const [pendingDropId, setPendingDropId] = useState<number | null>(null);
-  const [resetKeys, setResetKeys] = useState<Record<number, number>>({});
+  const [stackCount, setStackCount] = useState(INITIAL_STACK);
+  const [sheetKey, setSheetKey] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [showDock, setShowDock] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  const handleDropped = useCallback((id: number) => {
-    setHiddenIds((prev) => new Set([...prev, id]));
-    setPendingDropId(id);
+  const handleDropped = useCallback(() => {
     setShowModal(true);
   }, []);
 
   const handleCancel = () => {
-    if (pendingDropId !== null) {
-      setHiddenIds((prev) => {
-        const n = new Set(prev);
-        n.delete(pendingDropId);
-        return n;
-      });
-      setResetKeys((prev) => ({
-        ...prev,
-        [pendingDropId]: (prev[pendingDropId] ?? 0) + 1,
-      }));
-    }
-    setPendingDropId(null);
     setShowModal(false);
+    setSheetKey((k) => k + 1); // remount sheet at origin
   };
 
   const handleConfirm = () => {
-    setPendingDropId(null);
+    setStackCount((c) => Math.max(0, c - 1));
+    setSheetKey((k) => k + 1);
     setShowModal(false);
     setShowDock(true);
     setTimeout(() => router.push("/chat"), 600);
@@ -339,43 +380,21 @@ export default function Home() {
         overflow: "hidden",
         position: "relative",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        // Desk wood surface
-        backgroundColor: "#C8A97A",
-        backgroundImage: `
-          repeating-linear-gradient(
-            88deg,
-            transparent 0px, transparent 30px,
-            rgba(0,0,0,0.018) 30px, rgba(0,0,0,0.018) 31px
-          ),
-          repeating-linear-gradient(
-            93deg,
-            transparent 0px, transparent 80px,
-            rgba(0,0,0,0.008) 80px, rgba(0,0,0,0.008) 81px
-          )
-        `,
+        gap: 48,
+        background: "#FDFDFC", // paper — design system page background
       }}
     >
-      {/* App label */}
-      <div
-        style={{
-          position: "absolute",
-          top: 24,
-          left: 0,
-          right: 0,
-          textAlign: "center",
-          zIndex: 1,
-          pointerEvents: "none",
-        }}
-      >
+      {/* App title */}
+      <div style={{ textAlign: "center", pointerEvents: "none", zIndex: 1 }}>
         <h1
           style={{
-            fontSize: 22,
+            fontSize: 28,
             fontWeight: 700,
-            color: "rgba(255,255,255,0.85)",
-            letterSpacing: "-0.02em",
-            textShadow: "0 1px 4px rgba(0,0,0,0.25)",
+            color: "#121211",
+            letterSpacing: "-0.025em",
             margin: 0,
           }}
         >
@@ -383,9 +402,9 @@ export default function Home() {
         </h1>
         <p
           style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.5)",
-            marginTop: 4,
+            fontSize: 14,
+            color: "#6E6E6B",
+            marginTop: 6,
             fontWeight: 400,
           }}
         >
@@ -393,20 +412,42 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Center trash can */}
-      <TrashCan isOver={isDraggingOver} trashRef={trashRef} />
+      {/* Main scene: post-it pad + trash can side by side */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 64 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <PostItStack
+            count={stackCount}
+            sheetKey={sheetKey}
+            trashRef={trashRef}
+            onDropped={handleDropped}
+            onDragOverChange={setIsDraggingOver}
+          />
+          <p style={{ fontSize: 12, color: "#9E9E9B", margin: 0, fontFamily: "inherit" }}>
+            드래그해서 버려
+          </p>
+        </div>
 
-      {/* Scattered post-its */}
-      {POST_ITS.map((data) => (
-        <PostItItem
-          key={`${data.id}-${resetKeys[data.id] ?? 0}`}
-          data={data}
-          trashRef={trashRef}
-          isHidden={hiddenIds.has(data.id)}
-          onDropped={() => handleDropped(data.id)}
-          onDragOverChange={setIsDraggingOver}
-        />
-      ))}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <TrashCan3D isOver={isDraggingOver} trashRef={trashRef} />
+          <p style={{ fontSize: 12, color: "#9E9E9B", margin: 0, fontFamily: "inherit" }}>
+            여기에 버려
+          </p>
+        </div>
+      </div>
 
       {/* Confirm modal */}
       <AnimatePresence>
@@ -422,7 +463,7 @@ export default function Home() {
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(0,0,0,0.3)",
+                background: "rgba(0,0,0,0.25)",
                 backdropFilter: "blur(6px)",
                 WebkitBackdropFilter: "blur(6px)",
                 zIndex: 20,
@@ -452,7 +493,7 @@ export default function Home() {
                   pointerEvents: "all",
                   background: "#ffffff",
                   borderRadius: 24,
-                  boxShadow: "0 8px 48px rgba(0,0,0,0.2)",
+                  boxShadow: "0 8px 48px rgba(0,0,0,0.15)",
                   padding: "32px 28px 24px",
                   width: "min(340px, calc(100vw - 40px))",
                   textAlign: "center",
@@ -462,8 +503,9 @@ export default function Home() {
                   style={{
                     fontSize: 22,
                     fontWeight: 600,
-                    color: "#18181B",
+                    color: "#121211",
                     margin: "0 0 8px",
+                    letterSpacing: "-0.02em",
                   }}
                 >
                   버리시겠습니까?
@@ -471,7 +513,7 @@ export default function Home() {
                 <p
                   style={{
                     fontSize: 14,
-                    color: "#71717A",
+                    color: "#6E6E6B",
                     lineHeight: 1.5,
                     margin: "0 0 28px",
                   }}
@@ -485,13 +527,14 @@ export default function Home() {
                       flex: 1,
                       padding: "13px 0",
                       borderRadius: 9999,
-                      border: "1.5px solid #E4E4E7",
-                      background: "#fff",
+                      border: "1px solid rgba(17,17,15,0.08)",
+                      background: "#FFFFFF",
                       fontSize: 15,
                       fontWeight: 500,
                       cursor: "pointer",
-                      color: "#52525B",
+                      color: "#3A3A38",
                       fontFamily: "inherit",
+                      boxShadow: "0 1px 2px rgba(17,17,15,0.06), 0 4px 10px rgba(17,17,15,0.08)",
                     }}
                   >
                     취소
@@ -502,13 +545,14 @@ export default function Home() {
                       flex: 1,
                       padding: "13px 0",
                       borderRadius: 9999,
-                      border: "none",
-                      background: "#FFDF1E",
+                      border: "1px solid #000",
+                      background: "#121211",
                       fontSize: 15,
                       fontWeight: 600,
                       cursor: "pointer",
-                      color: "#18181B",
+                      color: "#FDFDFC",
                       fontFamily: "inherit",
+                      boxShadow: "0 1px 1px rgba(255,255,255,0.15) inset, 0 2px 4px rgba(17,17,15,0.15), 0 8px 20px rgba(17,17,15,0.18)",
                     }}
                   >
                     버릴게요
@@ -520,7 +564,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Dock slide-up */}
+      {/* MessageDock slide-up */}
       <AnimatePresence>
         {showDock && (
           <motion.div

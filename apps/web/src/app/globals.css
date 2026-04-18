@@ -1,65 +1,106 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+/* ── Design Tokens ───────────────────────────────────────── */
 @theme {
-  /* Neutral */
-  --color-neutral-0: #FFFFFF;
-  --color-neutral-50: #FAFAFA;
-  --color-neutral-100: #F4F4F5;
-  --color-neutral-200: #E4E4E7;
-  --color-neutral-300: #D1D1D6;
-  --color-neutral-400: #A1A1AA;
-  --color-neutral-500: #71717A;
-  --color-neutral-600: #52525B;
-  --color-neutral-700: #3F3F46;
-  --color-neutral-800: #27272A;
-  --color-neutral-900: #18181B;
-
-  /* Accent */
-  --color-accent: #FFDF1E;
-  --color-accent-dim: #F5D200;
-
-  /* Status */
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  /* Color — monochrome only */
+  --color-paper: #FDFDFC;
+  --color-surface: #FFFFFF;
+  --color-sunken: #F4F4F2;
+  --color-tint: #EDEDEA;
+  --color-ink: #121211;
+  --color-ink2: #3A3A38;
+  --color-ink3: #6E6E6B;
+  --color-ink4: #9E9E9B;
+  --color-ink5: #C4C4C0;
+  --color-ink6: #E2E2DF;
+  --color-hi: #0A0A09;
+  --color-lo: #FAFAF8;
+  --color-ember: #1A1A17;
 
   /* Font */
-  --font-body: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, "Noto Sans KR", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-card: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
-  --radius-full: 9999px;
+  /* Radius */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-round: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 4px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.07);
-  --shadow-3d: 0 8px 32px rgba(0,0,0,0.07);
-  --shadow-3d-hover: 0 12px 40px rgba(0,0,0,0.11);
-
-  /* Typography scale */
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.25rem;
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(17,17,15,0.04), 0 2px 6px rgba(17,17,15,0.05);
+  --shadow-md: 0 2px 4px rgba(17,17,15,0.04), 0 8px 24px rgba(17,17,15,0.07);
+  --shadow-lg: 0 4px 8px rgba(17,17,15,0.05), 0 18px 40px rgba(17,17,15,0.10);
+  --shadow-xl: 0 8px 16px rgba(17,17,15,0.06), 0 32px 80px rgba(17,17,15,0.14);
+  --shadow-inset: inset 0 1px 2px rgba(17,17,15,0.06), inset 0 0 0 1px rgba(17,17,15,0.03);
+  --shadow-hair: 0 0 0 1px rgba(17,17,15,0.06);
+  --shadow-bounce: 0 2px 4px rgba(17,17,15,0.06), 0 24px 48px rgba(17,17,15,0.12);
 }
 
+/* ── Design system aliases (--c-*, --sh-*, --mo-*, etc.) ─── */
+:root {
+  --c-paper:   var(--color-paper);
+  --c-surface: var(--color-surface);
+  --c-sunken:  var(--color-sunken);
+  --c-tint:    var(--color-tint);
+  --c-ink:     var(--color-ink);
+  --c-ink2:    var(--color-ink2);
+  --c-ink3:    var(--color-ink3);
+  --c-ink4:    var(--color-ink4);
+  --c-ink5:    var(--color-ink5);
+  --c-ink6:    var(--color-ink6);
+  --c-hi:      var(--color-hi);
+  --c-lo:      var(--color-lo);
+  --c-ember:   var(--color-ember);
+
+  --r-xs:    var(--radius-xs);
+  --r-sm:    var(--radius-sm);
+  --r-md:    var(--radius-md);
+  --r-lg:    var(--radius-lg);
+  --r-xl:    var(--radius-xl);
+  --r-round: var(--radius-round);
+
+  --sh-sm:     var(--shadow-sm);
+  --sh-md:     var(--shadow-md);
+  --sh-lg:     var(--shadow-lg);
+  --sh-xl:     var(--shadow-xl);
+  --sh-inset:  var(--shadow-inset);
+  --sh-hair:   var(--shadow-hair);
+  --sh-bounce: var(--shadow-bounce);
+
+  --font-body: var(--font-sans);
+
+  --mo-instant:  120ms;
+  --mo-quick:    180ms;
+  --mo-base:     260ms;
+  --mo-slow:     420ms;
+  --mo-scene:    720ms;
+  --mo-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --mo-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --mo-bounce:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mo-squish:   cubic-bezier(0.87, 0, 0.13, 1);
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
 
+body {
+  font-family: var(--font-sans);
+  color: var(--color-ink2);
+  background-color: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-ink);
   outline-offset: 3px;
 }
 
@@ -69,12 +110,4 @@ a:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-body {
-  font-family: var(--font-body);
-  color: #18181B;
-  background-color: #FFFFFF;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
