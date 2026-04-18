@@ -41,6 +41,8 @@ export default function ChatPage() {
   const [hintShown, setHintShown] = useState(() =>
     typeof window !== "undefined" && !!localStorage.getItem("gambass_hint_shown")
   );
+  const [hintVisible, setHintVisible] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
@@ -49,8 +51,17 @@ export default function ChatPage() {
     return () => {
       clearTimeout(timerRefs.current.timeout);
       clearInterval(timerRefs.current.interval);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     };
   }, []);
+
+  const hasUserMessage = messages.some((m) => m.role === "user");
+  useEffect(() => {
+    if (hintShown || !hasUserMessage) return;
+    setHintVisible(true);
+    hintTimerRef.current = setTimeout(() => setHintVisible(false), 10000);
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  }, [hasUserMessage, hintShown]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -114,6 +125,8 @@ export default function ChatPage() {
     );
     if (!hintShown) {
       setHintShown(true);
+      setHintVisible(false);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       localStorage.setItem("gambass_hint_shown", "1");
     }
   }, [hintShown]);
@@ -268,7 +281,7 @@ export default function ChatPage() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {!hintShown && crumpledCount === 0 && messages.some((m) => m.role === "user") && (
+          {hintVisible && (
             <motion.div
               data-testid="longpress-hint"
               initial={{ opacity: 0, y: 4 }}
