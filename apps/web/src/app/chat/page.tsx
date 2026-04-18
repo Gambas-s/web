@@ -38,6 +38,14 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(timerRefs.current.timeout);
+      clearInterval(timerRefs.current.interval);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,9 +63,8 @@ export default function ChatPage() {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
 
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
-    const aiId = (Date.now() + 1).toString();
-    // AI 버블을 pending 상태로 즉시 추가 — 위치 고정
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: trimmed };
+    const aiId = crypto.randomUUID();
     const aiMsg: Message = { id: aiId, role: "ai", content: "", pending: true };
 
     setMessages((prev) => [...prev, userMsg, aiMsg]);
@@ -66,9 +73,9 @@ export default function ChatPage() {
 
     const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
 
-    setTimeout(() => {
+    timerRefs.current.timeout = setTimeout(() => {
       let i = 0;
-      const interval = setInterval(() => {
+      timerRefs.current.interval = setInterval(() => {
         i++;
         setMessages((prev) =>
           prev.map((m) =>
@@ -76,7 +83,7 @@ export default function ChatPage() {
           )
         );
         if (i >= response.length) {
-          clearInterval(interval);
+          clearInterval(timerRefs.current.interval);
           setIsStreaming(false);
         }
       }, 35);
@@ -161,7 +168,7 @@ export default function ChatPage() {
           flex: 1,
           overflowY: "auto",
           padding: "16px 20px",
-          paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+          paddingBottom: 16,
           display: "flex",
           flexDirection: "column",
           gap: 12,
@@ -178,10 +185,7 @@ export default function ChatPage() {
       {/* 입력바 */}
       <div
         style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
+          flexShrink: 0,
           padding: "12px 16px",
           paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
           background: "#FFFFFF",
@@ -250,7 +254,7 @@ export default function ChatPage() {
 function Avatar() {
   return (
     <div style={{ width: 40, height: 40, borderRadius: 9999, flexShrink: 0, overflow: "hidden" }}>
-      <Image src="/gmaza_profile.png" alt="gamza" width={40} height={40} style={{ objectFit: "cover" }} />
+      <Image src="/gamza_profile.png" alt="gamza" width={40} height={40} style={{ objectFit: "cover" }} />
     </div>
   );
 }
