@@ -36,10 +36,19 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // 입력 내용에 따라 textarea 높이 자동 조절
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   const sendMessage = useCallback(() => {
     const trimmed = input.trim();
@@ -73,7 +82,7 @@ export default function ChatPage() {
     }, 600);
   }, [input, isStreaming]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -177,28 +186,34 @@ export default function ChatPage() {
           background: "#FFFFFF",
           boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-end",
           gap: 10,
         }}
       >
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="메세지 입력.."
+          rows={1}
           style={{
             flex: 1,
-            height: 44,
-            borderRadius: 9999,
+            minHeight: 44,
+            maxHeight: 120,
+            borderRadius: 22,
             border: "none",
             background: "#F4F4F2",
-            padding: "0 16px",
+            padding: "11px 16px",
             fontSize: 15,
             color: "#121211",
             outline: "none",
             fontFamily: "inherit",
             letterSpacing: "-0.005em",
+            resize: "none",
+            overflowY: "auto",
+            lineHeight: 1.5,
+            boxSizing: "border-box",
           }}
         />
         <motion.button

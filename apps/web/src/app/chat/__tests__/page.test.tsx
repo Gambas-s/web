@@ -139,14 +139,15 @@ test("Enter 키로 메시지를 전송할 수 있다", () => {
   expect(screen.getByText("엔터로 전송")).toBeDefined();
 });
 
-test("Shift+Enter는 전송하지 않는다", () => {
+test("Shift+Enter는 전송하지 않고 입력창에 값이 남아있다", () => {
   render(<ChatPage />);
-  const input = screen.getByPlaceholderText(/메세지 입력/);
+  const input = screen.getByPlaceholderText(/메세지 입력/) as HTMLTextAreaElement;
 
   fireEvent.change(input, { target: { value: "줄바꿈" } });
   fireEvent.keyDown(input, { key: "Enter", code: "Enter", shiftKey: true });
 
-  expect(screen.queryByText("줄바꿈")).toBeNull();
+  // 전송되지 않았으므로 입력창에 값이 그대로 남아 있어야 함
+  expect(input.value).toBe("줄바꿈");
 });
 
 // ─── 네비게이션 ──────────────────────────────────────────────
