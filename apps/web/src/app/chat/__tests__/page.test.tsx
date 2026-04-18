@@ -160,19 +160,19 @@ test("Shift+Enter는 전송하지 않고 입력창에 값이 남아있다", () =
 
 // ─── 크럼플 (롱프레스) ────────────────────────────────────────
 
-test("유저 메시지 500ms 롱프레스 시 trash 이미지로 교체된다", () => {
+test("유저 메시지 500ms 롱프레스 시 trash 이미지로 교체된다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
   const bubble = screen.getByText("스트레스 받아");
   fireEvent.pointerDown(bubble);
-  act(() => { vi.advanceTimersByTime(500); });
+  await act(async () => { vi.advanceTimersByTime(500); });
 
   expect(screen.getByAltText("crumpled")).toBeDefined();
   expect(screen.queryByText("스트레스 받아")).toBeNull();
 });
 
-test("500ms 이전에 손 떼면 크럼플되지 않는다", () => {
+test("500ms 이전에 손 떼면 크럼플되지 않는다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
@@ -180,18 +180,18 @@ test("500ms 이전에 손 떼면 크럼플되지 않는다", () => {
   fireEvent.pointerDown(bubble);
   act(() => { vi.advanceTimersByTime(300); });
   fireEvent.pointerUp(bubble);
-  act(() => { vi.advanceTimersByTime(500); });
+  await act(async () => { vi.advanceTimersByTime(500); });
 
   expect(screen.queryByAltText("crumpled")).toBeNull();
   expect(screen.getByText("스트레스 받아")).toBeDefined();
 });
 
-test("AI 메시지는 롱프레스해도 크럼플되지 않는다", () => {
+test("AI 메시지는 롱프레스해도 크럼플되지 않는다", async () => {
   render(<ChatPage />);
 
   const aiMsg = screen.getByText("무슨일이야?");
   fireEvent.pointerDown(aiMsg);
-  act(() => { vi.advanceTimersByTime(500); });
+  await act(async () => { vi.advanceTimersByTime(500); });
 
   expect(screen.queryByAltText("crumpled")).toBeNull();
 });

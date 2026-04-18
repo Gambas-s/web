@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLongPress } from "@/hooks/useLongPress";
 
 type Role = "ai" | "user";
 
@@ -273,7 +274,9 @@ function Avatar() {
   );
 }
 
-const LONG_PRESS_MS = 500;
+// Design system motion tokens
+const SQUISH = [0.87, 0, 0.13, 1] as const;
+const BOUNCE = [0.34, 1.56, 0.64, 1] as const;
 
 function MessageBubble({
   message,
@@ -283,30 +286,46 @@ function MessageBubble({
   onCrumple: () => void;
 }) {
   const isAI = message.role === "ai";
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const controls = useAnimation();
 
-  const startPress = () => {
-    if (isAI || message.crumpled || message.pending) return;
-    pressTimer.current = setTimeout(() => {
-      onCrumple();
-    }, LONG_PRESS_MS);
-  };
+  const handleLongPress = useCallback(async () => {
+    // squish: 납작해지며 사라짐 (--mo-squish easing)
+    await controls.start({
+      scaleX: [1, 1.08, 0],
+      scaleY: [1, 0.55, 0],
+      opacity: [1, 1, 0],
+      transition: { duration: 0.38, ease: SQUISH },
+    });
+    onCrumple();
+  }, [controls, onCrumple]);
 
-  const cancelPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
+  const longPress = useLongPress({
+    onLongPress: handleLongPress,
+    duration: 500,
+    disabled: isAI || !!message.crumpled || !!message.pending,
+  });
+
+  // 누르는 동안 서서히 찌그러짐
+  useEffect(() => {
+    if (longPress.isPressing) {
+      controls.start({
+        scale: 0.88,
+        transition: { duration: 0.5, ease: "linear" },
+      });
+    } else {
+      controls.start({
+        scale: 1,
+        transition: { duration: 0.22, ease: BOUNCE },
+      });
     }
-  };
-
-  useEffect(() => () => { if (pressTimer.current) clearTimeout(pressTimer.current); }, []);
+  }, [longPress.isPressing, controls]);
 
   if (message.crumpled) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.4, rotate: -8 }}
+        initial={{ opacity: 0, scale: 0.3, rotate: -15 }}
         animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        transition={{ duration: 0.42, ease: BOUNCE }}
         style={{ display: "flex", justifyContent: "flex-end", paddingRight: 4 }}
       >
         <Image
@@ -314,7 +333,7 @@ function MessageBubble({
           alt="crumpled"
           width={64}
           height={64}
-          style={{ objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.12))" }}
+          style={{ objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.14))" }}
         />
       </motion.div>
     );
@@ -334,11 +353,9 @@ function MessageBubble({
       }}
     >
       {isAI && <Avatar />}
-      <div
-        onPointerDown={startPress}
-        onPointerUp={cancelPress}
-        onPointerLeave={cancelPress}
-        onPointerCancel={cancelPress}
+      <motion.div
+        animate={controls}
+        {...longPress}
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
@@ -365,7 +382,7 @@ function MessageBubble({
         }}
       >
         {message.pending ? <DotsIndicator /> : message.content}
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
