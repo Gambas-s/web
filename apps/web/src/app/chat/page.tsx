@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
 
 type Role = "ai" | "user";
@@ -286,35 +286,20 @@ function MessageBubble({
   onCrumple: () => void;
 }) {
   const isAI = message.role === "ai";
-  const filterId = useId().replace(/:/g, "");
-  const dispMapRef = useRef<SVGFEDisplacementMapElement>(null);
-
-  // pressProgress: 0 = 정상, 1 = 완전히 구겨짐
   const pressProgress = useMotionValue(0);
-
-  // SVG 변위 필터를 pressProgress에 동기화
-  useEffect(() => {
-    return pressProgress.on("change", (v) => {
-      if (dispMapRef.current) {
-        dispMapRef.current.setAttribute("scale", String(v * 52));
-      }
-    });
-  }, [pressProgress]);
-
-  const bubbleScale = useTransform(pressProgress, [0, 0.7, 1], [1, 0.78, 0.38]);
-  const bubbleRadius = useTransform(pressProgress, [0, 0.5, 1], [
-    isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
-    "28px",
-    "50%",
-  ]);
-  const bubbleSkewX = useTransform(pressProgress, [0, 0.3, 0.6, 1], [0, -4, 3, 0]);
-  const bubbleSkewY = useTransform(pressProgress, [0, 0.4, 0.7, 1], [0, 2, -3, 0]);
-
   const isCrumpling = useRef(false);
+
+  // pressProgress → 버블 transform
+  const bubbleScale    = useTransform(pressProgress, [0, 1], [1, 0.72]);
+  const bubbleRadius   = useTransform(pressProgress, [0, 0.6, 1], [
+    isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px", "24px", "50%",
+  ]);
+  const textOpacity    = useTransform(pressProgress, [0, 0.45, 0.75], [1, 0.4, 0]);
 
   const handleLongPress = useCallback(async () => {
     isCrumpling.current = true;
-    await animate(pressProgress, 1, { duration: 0.32, ease: SQUISH });
+    // 빠르게 쭈그러들며 사라짐
+    await animate(pressProgress, 1, { duration: 0.28, ease: SQUISH });
     onCrumple();
   }, [pressProgress, onCrumple]);
 
@@ -326,9 +311,9 @@ function MessageBubble({
 
   useEffect(() => {
     if (longPress.isPressing) {
-      animate(pressProgress, 0.82, { duration: 0.5, ease: "linear" });
+      animate(pressProgress, 0.78, { duration: 0.5, ease: "linear" });
     } else if (!message.crumpled && !isCrumpling.current) {
-      animate(pressProgress, 0, { duration: 0.28, ease: BOUNCE });
+      animate(pressProgress, 0, { duration: 0.3, ease: BOUNCE });
     }
   }, [longPress.isPressing, pressProgress, message.crumpled]);
 
@@ -336,9 +321,9 @@ function MessageBubble({
     return (
       <motion.div
         layout
-        initial={{ scale: 0.3, rotate: -25, opacity: 0 }}
+        initial={{ scale: 0.25, rotate: -30, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
-        transition={{ duration: 0.45, ease: BOUNCE }}
+        transition={{ duration: 0.5, ease: BOUNCE }}
         data-testid="crumpled-ball"
         style={{ display: "flex", justifyContent: "flex-end", paddingRight: 8 }}
       >
@@ -347,7 +332,7 @@ function MessageBubble({
           alt="구겨진 종이"
           width={64}
           height={64}
-          style={{ objectFit: "contain", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))" }}
+          style={{ objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.2))" }}
         />
       </motion.div>
     );
@@ -368,24 +353,6 @@ function MessageBubble({
       }}
     >
       {isAI && <Avatar />}
-
-      {/* SVG 변위 필터 (꾸기기 텍스처) */}
-      <svg width="0" height="0" style={{ position: "absolute" }}>
-        <defs>
-          <filter id={`crumple-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04 0.05" numOctaves="4" seed="5" result="noise" />
-            <feDisplacementMap
-              ref={dispMapRef}
-              in="SourceGraphic"
-              in2="noise"
-              scale="0"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-
       <motion.div
         {...longPress}
         style={{
@@ -393,9 +360,6 @@ function MessageBubble({
           padding: message.pending ? "14px 18px" : "12px 16px",
           borderRadius: bubbleRadius,
           scale: bubbleScale,
-          skewX: bubbleSkewX,
-          skewY: bubbleSkewY,
-          filter: `url(#crumple-${filterId})`,
           fontSize: 15,
           lineHeight: 1.6,
           letterSpacing: "-0.005em",
@@ -406,18 +370,13 @@ function MessageBubble({
           touchAction: "none",
           cursor: isAI ? "default" : "pointer",
           ...(isAI
-            ? {
-                background: "#FFFFFF",
-                color: "#3A3A38",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-              }
-            : {
-                background: "#121211",
-                color: "#FDFDFC",
-              }),
+            ? { background: "#FFFFFF", color: "#3A3A38", boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)" }
+            : { background: "#121211", color: "#FDFDFC" }),
         }}
       >
-        {message.pending ? <DotsIndicator /> : message.content}
+        <motion.span style={{ opacity: textOpacity, display: "block" }}>
+          {message.pending ? <DotsIndicator /> : message.content}
+        </motion.span>
       </motion.div>
     </motion.div>
   );
