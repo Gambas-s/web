@@ -442,7 +442,7 @@ function MessageBubble({
   const { isPressing, ...longPressHandlers } = useLongPress({
     onLongPress: handleLongPress,
     duration: 500,
-    disabled: isAI || !!message.crumpled || !!message.pending,
+    disabled: !!message.crumpled || !!message.pending,
   });
 
   useEffect(() => {
@@ -461,10 +461,15 @@ function MessageBubble({
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ duration: 0.45, ease: BOUNCE }}
         data-testid="crumpled-ball"
-        style={{ display: "flex", justifyContent: "flex-end", paddingRight: 8 }}
+        style={{
+          display: "flex",
+          justifyContent: isAI ? "flex-start" : "flex-end",
+          paddingLeft: isAI ? 50 : 0,
+          paddingRight: isAI ? 0 : 8,
+        }}
       >
         <Image
-          src="/trash-paper.png"
+          src={isAI ? "/trash-paper-white.png" : "/trash-paper.png"}
           alt="구겨진 종이"
           width={64}
           height={64}

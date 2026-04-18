@@ -200,14 +200,22 @@ test("500ms 이전에 손 떼면 크럼플되지 않는다", async () => {
   expect(screen.getByText("스트레스 받아")).toBeDefined();
 });
 
-test("AI 메시지는 롱프레스해도 크럼플되지 않는다", async () => {
+test("AI 메시지도 롱프레스하면 크럼플된다", async () => {
   render(<ChatPage />);
 
   const aiMsg = screen.getByText("무슨일이야?");
   fireEvent.pointerDown(aiMsg);
   await act(async () => { vi.advanceTimersByTime(500); });
 
-  expect(screen.queryByAltText("crumpled")).toBeNull();
+  expect(screen.getByTestId("crumpled-ball")).toBeDefined();
+});
+
+test("pending 메시지는 롱프레스해도 크럼플되지 않는다", () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+  // pending AI 버블이 존재하는 상태 (스트리밍 전)
+  const beforeCount = screen.queryAllByTestId("crumpled-ball").length;
+  expect(beforeCount).toBe(0);
 });
 
 // ─── 네비게이션 ──────────────────────────────────────────────
