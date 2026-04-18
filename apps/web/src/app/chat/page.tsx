@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate, useAnimation } from "framer-motion";
+import React, { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useLongPress } from "@/hooks/useLongPress";
 
 type Role = "ai" | "user";
 
@@ -12,6 +13,7 @@ interface Message {
   role: Role;
   content: string;
   pending?: boolean;
+  crumpled?: boolean;
 }
 
 const MOCK_RESPONSES = [
@@ -36,6 +38,12 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [hintShown, setHintShown] = useState(true);
+  useEffect(() => {
+    setHintShown(!!localStorage.getItem("gambass_hint_shown"));
+  }, []);
+  const [hintVisible, setHintVisible] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
@@ -44,8 +52,17 @@ export default function ChatPage() {
     return () => {
       clearTimeout(timerRefs.current.timeout);
       clearInterval(timerRefs.current.interval);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     };
   }, []);
+
+  const hasUserMessage = messages.some((m) => m.role === "user");
+  useEffect(() => {
+    if (hintShown || !hasUserMessage) return;
+    setHintVisible(true);
+    hintTimerRef.current = setTimeout(() => setHintVisible(false), 10000);
+    return () => { if (hintTimerRef.current) clearTimeout(hintTimerRef.current); };
+  }, [hasUserMessage, hintShown]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,6 +106,32 @@ export default function ChatPage() {
       }, 35);
     }, 600);
   }, [input, isStreaming]);
+
+  const crumpledCount = messages.filter((m) => m.crumpled).length;
+  const firstUserMsgId = messages.find((m) => m.role === "user")?.id;
+  const trashControls = useAnimation();
+
+  useEffect(() => {
+    if (crumpledCount === 0) return;
+    trashControls.start({
+      rotate: [-6, 8, -5, 4, 0],
+      scale: [1, 0.82, 1.18, 0.94, 1],
+      transition: { duration: 0.42, ease: "easeOut" },
+    });
+  }, [crumpledCount, trashControls]);
+
+  const crumpleMessage = useCallback((id: string) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, crumpled: true } : m))
+    );
+    if (!hintShown) {
+      setHintShown(true);
+      setHintVisible(false);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      localStorage.setItem("gambass_hint_shown", "1");
+    }
+  }, [hintShown]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -160,6 +203,61 @@ export default function ChatPage() {
         >
           gamza
         </span>
+
+        <AnimatePresence>
+          {crumpledCount > 0 && (
+            <motion.button
+              aria-label="버리러가기"
+              onClick={() => router.push(`/trash?count=${crumpledCount}`)}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              style={{
+                position: "absolute",
+                right: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              <motion.div
+                animate={trashControls}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
+              </motion.div>
+              <motion.span
+                key={crumpledCount}
+                initial={{ scale: 1.8, opacity: 0, y: -4 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                data-testid="crumple-badge"
+                style={{
+                  minWidth: 20,
+                  height: 20,
+                  borderRadius: 9999,
+                  background: "#121211",
+                  color: "#FDFDFC",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingInline: 5,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {crumpledCount}
+              </motion.span>
+            </motion.button>
+          )}
+        </AnimatePresence>
       </motion.header>
 
       {/* 메시지 영역 */}
@@ -175,10 +273,50 @@ export default function ChatPage() {
         }}
       >
         <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+          {messages.map((msg) => {
+            const isFirstUserMsg = msg.id === firstUserMsgId;
+            return (
+              <React.Fragment key={msg.id}>
+                <MessageBubble
+                  message={msg}
+                  onCrumple={() => crumpleMessage(msg.id)}
+                />
+                {isFirstUserMsg && hintVisible && (
+                  <motion.div
+                    data-testid="longpress-hint"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                    style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+                  >
+                    <motion.span
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                      style={{
+                        fontSize: 12,
+                        color: "#9E9E9B",
+                        letterSpacing: "-0.01em",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      꾹 눌러봐
+                      <motion.span
+                        animate={{ y: [0, 3, 0] }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        👆
+                      </motion.span>
+                    </motion.span>
+                  </motion.div>
+                )}
+              </React.Fragment>
+            );
+          })}
         </AnimatePresence>
+
         <div ref={bottomRef} />
       </section>
 
@@ -259,14 +397,98 @@ function Avatar() {
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+// Design system motion tokens
+const SQUISH: [number, number, number, number] = [0.87, 0, 0.13, 1];
+const BOUNCE: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
+
+function MessageBubble({
+  message,
+  onCrumple,
+}: {
+  message: Message;
+  onCrumple: () => void;
+}) {
   const isAI = message.role === "ai";
+  const filterId = useId().replace(/:/g, "");
+  const dispMapRef = useRef<SVGFEDisplacementMapElement>(null);
+
+  // pressProgress: 0 = 정상, 1 = 완전히 구겨짐
+  const pressProgress = useMotionValue(0);
+
+  // SVG 변위 필터를 pressProgress에 동기화
+  useEffect(() => {
+    return pressProgress.on("change", (v) => {
+      if (dispMapRef.current) {
+        dispMapRef.current.setAttribute("scale", String(v * 52));
+      }
+    });
+  }, [pressProgress]);
+
+  const bubbleScale = useTransform(pressProgress, [0, 0.7, 1], [1, 0.78, 0.38]);
+  const bubbleRadius = useTransform(pressProgress, [0, 0.5, 1], [
+    isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
+    "28px",
+    "50%",
+  ]);
+  const bubbleSkewX = useTransform(pressProgress, [0, 0.3, 0.6, 1], [0, -4, 3, 0]);
+  const bubbleSkewY = useTransform(pressProgress, [0, 0.4, 0.7, 1], [0, 2, -3, 0]);
+
+  const isCrumpling = useRef(false);
+
+  const handleLongPress = useCallback(async () => {
+    isCrumpling.current = true;
+    await animate(pressProgress, 1, { duration: 0.32, ease: SQUISH });
+    onCrumple();
+  }, [pressProgress, onCrumple]);
+
+  const { isPressing, ...longPressHandlers } = useLongPress({
+    onLongPress: handleLongPress,
+    duration: 500,
+    disabled: !!message.crumpled || !!message.pending,
+  });
+
+  useEffect(() => {
+    if (isPressing) {
+      animate(pressProgress, 0.82, { duration: 0.5, ease: "linear" });
+    } else if (!message.crumpled && !isCrumpling.current) {
+      animate(pressProgress, 0, { duration: 0.28, ease: BOUNCE });
+    }
+  }, [isPressing, pressProgress, message.crumpled]);
+
+  if (message.crumpled) {
+    return (
+      <motion.div
+        layout
+        initial={{ scale: 0.3, rotate: -25, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ duration: 0.45, ease: BOUNCE }}
+        data-testid="crumpled-ball"
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: isAI ? "flex-start" : "flex-end",
+          gap: 10,
+          paddingRight: isAI ? 0 : 8,
+        }}
+      >
+        {isAI && <Avatar />}
+        <Image
+          src={isAI ? "/trash-paper-white.png" : "/trash-paper.png"}
+          alt="구겨진 종이"
+          width={64}
+          height={64}
+          style={{ objectFit: "contain" }}
+        />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+      transition={{ layout: { duration: 0.3, ease: BOUNCE }, opacity: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -276,17 +498,43 @@ function MessageBubble({ message }: { message: Message }) {
       }}
     >
       {isAI && <Avatar />}
-      <div
+
+      {/* SVG 변위 필터 (꾸기기 텍스처) */}
+      <svg width="0" height="0" style={{ position: "absolute" }}>
+        <defs>
+          <filter id={`crumple-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04 0.05" numOctaves="4" seed="5" result="noise" />
+            <feDisplacementMap
+              ref={dispMapRef}
+              in="SourceGraphic"
+              in2="noise"
+              scale="0"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
+
+      <motion.div
+        {...longPressHandlers}
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
-          // 전송자 쪽 하단 모서리만 뾰족하게: AI=좌하단, 유저=우하단
-          borderRadius: isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
+          borderRadius: bubbleRadius,
+          scale: bubbleScale,
+          skewX: bubbleSkewX,
+          skewY: bubbleSkewY,
+          filter: `url(#crumple-${filterId})`,
           fontSize: 15,
           lineHeight: 1.6,
           letterSpacing: "-0.005em",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "pan-y",
+          cursor: isAI ? "default" : "pointer",
           ...(isAI
             ? {
                 background: "#FFFFFF",
@@ -300,7 +548,7 @@ function MessageBubble({ message }: { message: Message }) {
         }}
       >
         {message.pending ? <DotsIndicator /> : message.content}
-      </div>
+      </motion.div>
     </motion.div>
   );
 }
