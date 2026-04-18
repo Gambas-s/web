@@ -96,13 +96,15 @@ function TrashContent() {
         {/* 뽀잉뽀잉 애니메이션 */}
         <motion.div
           animate={{
-            scale: [1, 1.06, 0.96, 1.04, 0.98, 1],
-            rotate: [0, 1.5, -1, 1, -0.5, 0],
+            scaleX: [1, 0.86, 1.14, 0.94, 1.06, 1],
+            scaleY: [1, 1.14, 0.88, 1.06, 0.96, 1],
+            y: [0, 4, -8, 2, -3, 0],
           }}
           transition={{
-            duration: 2.2,
+            duration: 1.5,
             repeat: Infinity,
             ease: "easeInOut",
+            repeatDelay: 0.4,
           }}
         >
           <Image
