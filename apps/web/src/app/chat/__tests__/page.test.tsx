@@ -103,19 +103,28 @@ test("빈 메시지는 전송해도 새 버블이 추가되지 않는다", () =>
   expect(screen.getAllByText("무슨일이야?")).toHaveLength(1);
 });
 
-test("스트리밍 중에는 두 번째 메시지 전송이 차단된다", () => {
+test("스트리밍 중에는 전송 버튼이 비활성화된다", () => {
   render(<ChatPage />);
   typeAndSend("첫 번째 메시지");
 
   act(() => { vi.advanceTimersByTime(100); }); // 스트리밍 진행 중
 
-  // 스트리밍 중 두 번째 전송 시도
-  fireEvent.change(screen.getByPlaceholderText(/메세지 입력/), {
-    target: { value: "두 번째 메시지" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: /전송/ }));
+  expect(
+    (screen.getByRole("button", { name: /전송/ }) as HTMLButtonElement).disabled
+  ).toBe(true);
+});
 
-  expect(screen.queryByText("두 번째 메시지")).toBeNull();
+test("스트리밍 중에도 입력창에 타이핑할 수 있다", () => {
+  render(<ChatPage />);
+  typeAndSend("첫 번째 메시지");
+
+  act(() => { vi.advanceTimersByTime(100); }); // 스트리밍 진행 중
+
+  const input = screen.getByPlaceholderText(/메세지 입력/) as HTMLInputElement;
+  expect(input.disabled).toBe(false);
+
+  fireEvent.change(input, { target: { value: "다음 할 말 준비 중" } });
+  expect(input.value).toBe("다음 할 말 준비 중");
 });
 
 // ─── 키보드 ──────────────────────────────────────────────────

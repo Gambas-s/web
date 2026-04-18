@@ -187,7 +187,6 @@ export default function ChatPage() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="메세지 입력.."
-          disabled={isStreaming}
           style={{
             flex: 1,
             height: 44,
@@ -267,7 +266,8 @@ function MessageBubble({ message }: { message: Message }) {
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
-          borderRadius: 20,
+          // 전송자 쪽 하단 모서리만 뾰족하게: AI=좌하단, 유저=우하단
+          borderRadius: isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
           fontSize: 15,
           lineHeight: 1.6,
           letterSpacing: "-0.005em",
