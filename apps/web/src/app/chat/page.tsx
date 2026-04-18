@@ -444,7 +444,8 @@ export default function ChatPage() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <motion.button
-                  aria-label="다 불태울겡요"
+                  aria-label="다 불태울게요"
+                  data-testid="trash-confirm-burn"
                   whileTap={{ scale: 0.97 }}
                   transition={{ type: "spring", stiffness: 400, damping: 20 }}
                   onClick={() => router.push(`/trash?count=${crumpledCount}`)}
@@ -462,7 +463,7 @@ export default function ChatPage() {
                     fontFamily: "inherit",
                   }}
                 >
-                  네 다 불태울겡요
+                  네, 다 불태울게요.
                 </motion.button>
                 <motion.button
                   aria-label="아니요"
@@ -483,7 +484,7 @@ export default function ChatPage() {
                     fontFamily: "inherit",
                   }}
                 >
-                  아니요 아직 감정이 남았어요
+                  아니요, 아직 감정이 남았어요.
                 </motion.button>
               </div>
             </motion.div>
