@@ -35,6 +35,7 @@ const INITIAL_MESSAGE: Message = {
 
 export default function ChatPage() {
   const router = useRouter();
+  const [showTrashModal, setShowTrashModal] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -208,7 +209,7 @@ export default function ChatPage() {
           {crumpledCount > 0 && (
             <motion.button
               aria-label="버리러가기"
-              onClick={() => router.push(`/trash?count=${crumpledCount}`)}
+              onClick={() => setShowTrashModal(true)}
               initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.7 }}
@@ -385,6 +386,113 @@ export default function ChatPage() {
           </svg>
         </motion.button>
       </div>
+
+      {/* 쓰레기 버리기 확인 모달 */}
+      <AnimatePresence>
+        {showTrashModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setShowTrashModal(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.4)",
+                zIndex: 100,
+              }}
+            />
+            <motion.div
+              data-testid="trash-confirm-modal"
+              role="dialog"
+              aria-modal="true"
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              style={{
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 101,
+                background: "#FDFDFC",
+                borderRadius: "24px 24px 0 0",
+                padding: "32px 24px",
+                paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: "#121211",
+                  lineHeight: 1.5,
+                  letterSpacing: "-0.02em",
+                  textAlign: "center",
+                  margin: 0,
+                }}
+              >
+                쓰레기를 버릴까요?
+                <br />
+                <span style={{ fontWeight: 400, fontSize: 14, color: "#6E6E6B" }}>
+                  감정과 함께 채팅이 전부 사라져요!
+                </span>
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <motion.button
+                  aria-label="다 불태울게요"
+                  data-testid="trash-confirm-burn"
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  onClick={() => router.push(`/trash?count=${crumpledCount}`)}
+                  style={{
+                    width: "100%",
+                    height: 52,
+                    borderRadius: 9999,
+                    border: "none",
+                    background: "#121211",
+                    color: "#FDFDFC",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  네, 다 불태울게요.
+                </motion.button>
+                <motion.button
+                  aria-label="아니요"
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  onClick={() => setShowTrashModal(false)}
+                  style={{
+                    width: "100%",
+                    height: 52,
+                    borderRadius: 9999,
+                    border: "none",
+                    background: "#F4F4F2",
+                    color: "#121211",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    letterSpacing: "-0.02em",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  아니요, 아직 감정이 남았어요.
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

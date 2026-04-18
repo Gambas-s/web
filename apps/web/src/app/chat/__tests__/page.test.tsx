@@ -255,7 +255,7 @@ test("뱃지에 크럼플 수가 표시된다", async () => {
   expect(screen.getByTestId("crumple-badge").textContent).toBe("1");
 });
 
-test("'버리러가기' 버튼 클릭 시 /trash?count=N으로 이동한다", async () => {
+test("'버리러가기' 버튼 클릭 시 확인 모달이 열린다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
@@ -264,6 +264,36 @@ test("'버리러가기' 버튼 클릭 시 /trash?count=N으로 이동한다", as
   await act(async () => { vi.advanceTimersByTime(500); });
 
   fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
+  expect(screen.getByTestId("trash-confirm-modal")).toBeDefined();
+  expect(mockPush).not.toHaveBeenCalled();
+});
+
+test("모달에서 '아니요' 클릭 시 모달이 닫히고 이동하지 않는다", async () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
+  fireEvent.click(screen.getByRole("button", { name: /아니요/ }));
+
+  expect(screen.queryByTestId("trash-confirm-modal")).toBeNull();
+  expect(mockPush).not.toHaveBeenCalled();
+});
+
+test("모달에서 '다 불태울게요' 클릭 시 /trash?count=N으로 이동한다", async () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  await act(async () => { vi.advanceTimersByTime(500); });
+
+  fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
+  fireEvent.click(screen.getByTestId("trash-confirm-burn"));
+
   expect(mockPush).toHaveBeenCalledWith("/trash?count=1");
 });
 
