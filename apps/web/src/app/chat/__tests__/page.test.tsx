@@ -17,6 +17,7 @@ vi.mock("framer-motion", () => ({
     button: ({ children, onClick, animate: _a, initial: _i, transition: _t, whileTap: _w, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & Record<string, unknown>) => <button onClick={onClick} {...props}>{children}</button>,
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAnimation: () => ({ start: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 vi.mock("next/image", () => ({
@@ -155,6 +156,44 @@ test("Shift+Enter는 전송하지 않고 입력창에 값이 남아있다", () =
 
   // 전송되지 않았으므로 입력창에 값이 그대로 남아 있어야 함
   expect(input.value).toBe("줄바꿈");
+});
+
+// ─── 크럼플 (롱프레스) ────────────────────────────────────────
+
+test("유저 메시지 500ms 롱프레스 시 trash 이미지로 교체된다", () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  act(() => { vi.advanceTimersByTime(500); });
+
+  expect(screen.getByAltText("crumpled")).toBeDefined();
+  expect(screen.queryByText("스트레스 받아")).toBeNull();
+});
+
+test("500ms 이전에 손 떼면 크럼플되지 않는다", () => {
+  render(<ChatPage />);
+  typeAndSend("스트레스 받아");
+
+  const bubble = screen.getByText("스트레스 받아");
+  fireEvent.pointerDown(bubble);
+  act(() => { vi.advanceTimersByTime(300); });
+  fireEvent.pointerUp(bubble);
+  act(() => { vi.advanceTimersByTime(500); });
+
+  expect(screen.queryByAltText("crumpled")).toBeNull();
+  expect(screen.getByText("스트레스 받아")).toBeDefined();
+});
+
+test("AI 메시지는 롱프레스해도 크럼플되지 않는다", () => {
+  render(<ChatPage />);
+
+  const aiMsg = screen.getByText("무슨일이야?");
+  fireEvent.pointerDown(aiMsg);
+  act(() => { vi.advanceTimersByTime(500); });
+
+  expect(screen.queryByAltText("crumpled")).toBeNull();
 });
 
 // ─── 네비게이션 ──────────────────────────────────────────────

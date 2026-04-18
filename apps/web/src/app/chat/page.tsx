@@ -12,6 +12,7 @@ interface Message {
   role: Role;
   content: string;
   pending?: boolean;
+  crumpled?: boolean;
 }
 
 const MOCK_RESPONSES = [
@@ -89,6 +90,15 @@ export default function ChatPage() {
       }, 35);
     }, 600);
   }, [input, isStreaming]);
+
+  const crumpledCount = messages.filter((m) => m.crumpled).length;
+
+  const crumpleMessage = useCallback((id: string) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, crumpled: true } : m))
+    );
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -176,7 +186,11 @@ export default function ChatPage() {
       >
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              onCrumple={() => crumpleMessage(msg.id)}
+            />
           ))}
         </AnimatePresence>
         <div ref={bottomRef} />
@@ -259,8 +273,52 @@ function Avatar() {
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+const LONG_PRESS_MS = 500;
+
+function MessageBubble({
+  message,
+  onCrumple,
+}: {
+  message: Message;
+  onCrumple: () => void;
+}) {
   const isAI = message.role === "ai";
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startPress = () => {
+    if (isAI || message.crumpled || message.pending) return;
+    pressTimer.current = setTimeout(() => {
+      onCrumple();
+    }, LONG_PRESS_MS);
+  };
+
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  useEffect(() => () => { if (pressTimer.current) clearTimeout(pressTimer.current); }, []);
+
+  if (message.crumpled) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.4, rotate: -8 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        style={{ display: "flex", justifyContent: "flex-end", paddingRight: 4 }}
+      >
+        <Image
+          src="/trash-can.png"
+          alt="crumpled"
+          width={64}
+          height={64}
+          style={{ objectFit: "contain", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.12))" }}
+        />
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -277,16 +335,23 @@ function MessageBubble({ message }: { message: Message }) {
     >
       {isAI && <Avatar />}
       <div
+        onPointerDown={startPress}
+        onPointerUp={cancelPress}
+        onPointerLeave={cancelPress}
+        onPointerCancel={cancelPress}
         style={{
           maxWidth: "72%",
           padding: message.pending ? "14px 18px" : "12px 16px",
-          // 전송자 쪽 하단 모서리만 뾰족하게: AI=좌하단, 유저=우하단
           borderRadius: isAI ? "20px 20px 20px 5px" : "20px 20px 5px 20px",
           fontSize: 15,
           lineHeight: 1.6,
           letterSpacing: "-0.005em",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "none",
+          cursor: isAI ? "default" : "pointer",
           ...(isAI
             ? {
                 background: "#FFFFFF",
