@@ -463,17 +463,19 @@ function MessageBubble({
         data-testid="crumpled-ball"
         style={{
           display: "flex",
+          alignItems: "flex-end",
           justifyContent: isAI ? "flex-start" : "flex-end",
-          paddingLeft: isAI ? 50 : 0,
+          gap: 10,
           paddingRight: isAI ? 0 : 8,
         }}
       >
+        {isAI && <Avatar />}
         <Image
           src={isAI ? "/trash-paper-white.png" : "/trash-paper.png"}
           alt="구겨진 종이"
           width={64}
           height={64}
-          style={{ objectFit: "contain", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))" }}
+          style={{ objectFit: "contain" }}
         />
       </motion.div>
     );
