@@ -23,7 +23,6 @@ const mockMotionValue = (initial: number) => {
 vi.mock("framer-motion", () => ({
   motion: {
     div: ({ children, animate: _a, initial: _i, transition: _t, exit: _e, whileTap: _w, style: _s, ...props }: React.HTMLAttributes<HTMLDivElement> & Record<string, unknown>) => <div {...props}>{children}</div>,
-    span: ({ children, style: _s, ...props }: React.HTMLAttributes<HTMLSpanElement> & Record<string, unknown>) => <span {...props}>{children}</span>,
     header: ({ children, animate: _a, initial: _i, transition: _t, ...props }: React.HTMLAttributes<HTMLElement> & Record<string, unknown>) => <header {...props}>{children}</header>,
     button: ({ children, onClick, animate: _a, initial: _i, transition: _t, whileTap: _w, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & Record<string, unknown>) => <button onClick={onClick} {...props}>{children}</button>,
   },
