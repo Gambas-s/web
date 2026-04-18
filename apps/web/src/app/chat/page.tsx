@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate, useAnimation } from "framer-motion";
 import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
 
@@ -93,6 +93,16 @@ export default function ChatPage() {
   }, [input, isStreaming]);
 
   const crumpledCount = messages.filter((m) => m.crumpled).length;
+  const trashControls = useAnimation();
+
+  useEffect(() => {
+    if (crumpledCount === 0) return;
+    trashControls.start({
+      rotate: [-6, 8, -5, 4, 0],
+      scale: [1, 0.82, 1.18, 0.94, 1],
+      transition: { duration: 0.42, ease: "easeOut" },
+    });
+  }, [crumpledCount, trashControls]);
 
   const crumpleMessage = useCallback((id: string) => {
     if (navigator.vibrate) navigator.vibrate(30);
@@ -195,9 +205,7 @@ export default function ChatPage() {
               }}
             >
               <motion.div
-                key={crumpledCount}
-                animate={{ rotate: [-6, 8, -5, 4, 0], scale: [1, 0.82, 1.18, 0.94, 1] }}
-                transition={{ duration: 0.42, ease: "easeOut" }}
+                animate={trashControls}
                 style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
