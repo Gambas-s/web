@@ -177,49 +177,40 @@ export default function ChatPage() {
             <motion.button
               aria-label="버리러가기"
               onClick={() => router.push("/trash")}
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.7 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
               style={{
                 position: "absolute",
                 right: 16,
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
-                height: 36,
-                paddingInline: 12,
-                background: "#121211",
+                gap: 4,
+                background: "none",
                 border: "none",
-                borderRadius: 9999,
                 cursor: "pointer",
-                color: "#FDFDFC",
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                fontFamily: "inherit",
+                padding: 4,
               }}
             >
-              버리러가기
-              <span
+              <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
+              <motion.span
+                key={crumpledCount}
+                initial={{ scale: 1.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 20 }}
                 data-testid="crumple-badge"
                 style={{
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: 9999,
-                  background: "#FDFDFC",
-                  color: "#121211",
-                  fontSize: 11,
+                  fontSize: 14,
                   fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingInline: 4,
+                  color: "#121211",
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1,
                 }}
               >
                 {crumpledCount}
-              </span>
+              </motion.span>
             </motion.button>
           )}
         </AnimatePresence>
