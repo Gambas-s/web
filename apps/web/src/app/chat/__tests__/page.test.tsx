@@ -19,6 +19,13 @@ vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("next/image", () => ({
+  default: ({ src, alt, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    <img src={src} alt={alt} {...props} />
+  ),
+}));
+
 beforeAll(() => {
   window.HTMLElement.prototype.scrollIntoView = vi.fn();
 });

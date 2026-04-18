@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -150,7 +151,7 @@ export default function ChatPage() {
             letterSpacing: "-0.02em",
           }}
         >
-          감바쓰
+          gamza
         </span>
       </motion.header>
 
@@ -248,15 +249,9 @@ export default function ChatPage() {
 
 function Avatar() {
   return (
-    <div
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: 9999,
-        background: "#C4C4C0",
-        flexShrink: 0,
-      }}
-    />
+    <div style={{ width: 40, height: 40, borderRadius: 9999, flexShrink: 0, overflow: "hidden" }}>
+      <Image src="/gmaza_profile.png" alt="gamza" width={40} height={40} style={{ objectFit: "cover" }} />
+    </div>
   );
 }
 
