@@ -332,34 +332,18 @@ function MessageBubble({
   if (message.crumpled) {
     return (
       <motion.div
-        initial={{ scale: 0.4, rotate: -20, opacity: 0 }}
+        initial={{ scale: 0.3, rotate: -25, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ duration: 0.45, ease: BOUNCE }}
         data-testid="crumpled-ball"
         style={{ display: "flex", justifyContent: "flex-end", paddingRight: 8 }}
       >
-        {/* 종이 뭉치: SVG 필터로 울퉁불퉁한 질감 */}
-        <svg width="0" height="0" style={{ position: "absolute" }}>
-          <defs>
-            <filter id={`crumpled-static-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.065 0.075" numOctaves="4" seed="8" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </defs>
-        </svg>
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: isAI
-              ? "radial-gradient(circle at 38% 35%, #fff 0%, #e8e8e6 55%, #d4d4d0 100%)"
-              : "radial-gradient(circle at 38% 35%, #3a3a38 0%, #1e1e1d 55%, #0f0f0e 100%)",
-            boxShadow: isAI
-              ? "inset -3px -3px 6px rgba(0,0,0,0.15), inset 2px 2px 5px rgba(255,255,255,0.7), 0 3px 10px rgba(0,0,0,0.12)"
-              : "inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 5px rgba(255,255,255,0.08), 0 3px 10px rgba(0,0,0,0.2)",
-            filter: `url(#crumpled-static-${filterId})`,
-          }}
+        <Image
+          src="/trash-paper.png"
+          alt="구겨진 종이"
+          width={64}
+          height={64}
+          style={{ objectFit: "contain", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.18))" }}
         />
       </motion.div>
     );
