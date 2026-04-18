@@ -1,16 +1,345 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect, useCallback } from "react";
+
+type Role = "ai" | "user";
+
+interface Message {
+  id: string;
+  role: Role;
+  content: string;
+}
+
+const MOCK_RESPONSES = [
+  "ㅁㅊㅋㅋㅋ\n잼컨 발생 빨리 말해줘",
+  "어우 진짜? 더 말해봐",
+  "그래서 어떻게 됐어?",
+  "아 진짜 그건 너무하네",
+  "맞아, 그럴 수 있어. 계속해봐",
+  "헐 진짜?? 그 사람 왜 그래",
+  "ㅋㅋㅋ 맞아 그건 빡치지",
+  "다 털어놔, 여기 다 받아줄게",
+];
+
+const INITIAL_MESSAGE: Message = {
+  id: "init",
+  role: "ai",
+  content: "무슨일이야?",
+};
+
 export default function ChatPage() {
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  const sendMessage = useCallback(() => {
+    const trimmed = input.trim();
+    if (!trimmed || isTyping) return;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: trimmed,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsTyping(true);
+
+    const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+
+    setTimeout(() => {
+      const aiId = (Date.now() + 1).toString();
+      const aiMsg: Message = { id: aiId, role: "ai", content: "" };
+      setMessages((prev) => [...prev, aiMsg]);
+      setIsTyping(false);
+
+      let i = 0;
+      const interval = setInterval(() => {
+        i++;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId ? { ...m, content: response.slice(0, i) } : m
+          )
+        );
+        if (i >= response.length) clearInterval(interval);
+      }, 35);
+    }, 600);
+  }, [input, isTyping]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
   return (
     <main
       style={{
         width: "100%",
         height: "100dvh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#FAFAFA",
+        flexDirection: "column",
+        background: "#FDFDFC",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <p style={{ fontSize: 15, color: "#71717A" }}>채팅 페이지 (준비 중)</p>
+      {/* 헤더 */}
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 56,
+          flexShrink: 0,
+          paddingInline: 16,
+          background: "#FDFDFC",
+        }}
+      >
+        <motion.button
+          aria-label="뒤로가기"
+          onClick={() => router.push("/")}
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          style={{
+            position: "absolute",
+            left: 16,
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#121211",
+            borderRadius: 9999,
+          }}
+        >
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+            <path d="M9 1L1 9L9 17" stroke="#121211" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </motion.button>
+
+        <span
+          style={{
+            fontSize: 17,
+            fontWeight: 700,
+            color: "#121211",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          감바쓰
+        </span>
+      </motion.header>
+
+      {/* 메시지 영역 */}
+      <section
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 20px",
+          paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+
+          {isTyping && (
+            <motion.div
+              key="typing"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+              style={{ display: "flex", alignItems: "flex-end", gap: 10 }}
+            >
+              <Avatar />
+              <TypingIndicator />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div ref={bottomRef} />
+      </section>
+
+      {/* 입력바 */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "12px 16px",
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+          background: "#FFFFFF",
+          boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="메세지 입력.."
+          disabled={isTyping}
+          style={{
+            flex: 1,
+            height: 44,
+            borderRadius: 9999,
+            border: "none",
+            background: "#F4F4F2",
+            padding: "0 16px",
+            fontSize: 15,
+            color: "#121211",
+            outline: "none",
+            fontFamily: "inherit",
+            letterSpacing: "-0.005em",
+          }}
+        />
+        <motion.button
+          aria-label="전송"
+          onClick={sendMessage}
+          disabled={!input.trim() || isTyping}
+          whileTap={input.trim() && !isTyping ? { scale: 0.92 } : {}}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 9999,
+            border: "none",
+            background: "#121211",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: input.trim() && !isTyping ? "pointer" : "default",
+            opacity: input.trim() && !isTyping ? 1 : 0.4,
+            transition: "opacity 0.15s ease",
+            flexShrink: 0,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </motion.button>
+      </div>
     </main>
+  );
+}
+
+function Avatar() {
+  return (
+    <div
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 9999,
+        background: "#C4C4C0",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+function MessageBubble({ message }: { message: Message }) {
+  const isAI = message.role === "ai";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-end",
+        justifyContent: isAI ? "flex-start" : "flex-end",
+        gap: 10,
+      }}
+    >
+      {isAI && <Avatar />}
+      <div
+        style={{
+          maxWidth: "72%",
+          padding: "12px 16px",
+          borderRadius: 20,
+          fontSize: 15,
+          lineHeight: 1.6,
+          letterSpacing: "-0.005em",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          ...(isAI
+            ? {
+                background: "#FFFFFF",
+                color: "#3A3A38",
+                boxShadow:
+                  "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+              }
+            : {
+                background: "#121211",
+                color: "#FDFDFC",
+              }),
+        }}
+      >
+        {message.content}
+      </div>
+    </motion.div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div
+      style={{
+        padding: "14px 18px",
+        borderRadius: 20,
+        background: "#FFFFFF",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+        display: "flex",
+        gap: 4,
+        alignItems: "center",
+      }}
+    >
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          animate={{ y: [0, -4, 0] }}
+          transition={{
+            duration: 0.6,
+            repeat: Infinity,
+            delay: i * 0.15,
+            ease: "easeInOut",
+          }}
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 9999,
+            background: "#9E9E9B",
+          }}
+        />
+      ))}
+    </div>
   );
 }
