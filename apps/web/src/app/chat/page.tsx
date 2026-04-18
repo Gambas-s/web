@@ -406,6 +406,8 @@ export default function ChatPage() {
             />
             <motion.div
               data-testid="trash-confirm-modal"
+              role="dialog"
+              aria-modal="true"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}

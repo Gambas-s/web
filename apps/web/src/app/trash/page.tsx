@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 function TrashContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const total = Math.max(1, parseInt(searchParams.get("count") ?? "1", 10));
+  const total = Math.max(1, parseInt(searchParams.get("count") ?? "1", 10) || 1);
   const [burned, setBurned] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,7 +167,7 @@ function TrashContent() {
 
 export default function TrashPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div style={{ width: "100%", height: "100dvh", background: "#FDFDFC" }} />}>
       <TrashContent />
     </Suspense>
   );
