@@ -335,6 +335,7 @@ function MessageBubble({
   if (message.crumpled) {
     return (
       <motion.div
+        layout
         initial={{ scale: 0.3, rotate: -25, opacity: 0 }}
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ duration: 0.45, ease: BOUNCE }}
@@ -354,9 +355,10 @@ function MessageBubble({
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+      transition={{ layout: { duration: 0.3, ease: BOUNCE }, opacity: { duration: 0.2, ease: [0.32, 0.72, 0, 1] } }}
       style={{
         display: "flex",
         flexDirection: "row",
