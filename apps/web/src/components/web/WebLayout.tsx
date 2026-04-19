@@ -14,7 +14,7 @@ export function WebLayout({ sidebar, children }: WebLayoutProps) {
       {/* Desktop: sidebar + children */}
       <div className="hidden md:flex w-full h-dvh overflow-hidden">
         {sidebar}
-        <main className="flex-1 min-w-0 h-dvh overflow-y-auto">
+        <main className="flex-1 min-w-0 h-dvh overflow-hidden">
           {children}
         </main>
       </div>
