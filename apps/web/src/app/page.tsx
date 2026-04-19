@@ -42,7 +42,6 @@ function WebHomeContent() {
   const inputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setWindowHeight(window.innerHeight);
     const onResize = () => setWindowHeight(window.innerHeight);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -54,6 +53,7 @@ function WebHomeContent() {
     if (rect) {
       setCloneRect({ top: rect.top, left: rect.left, width: rect.width });
     }
+    setWindowHeight(window.innerHeight);
     setNavigating(true);
     setTimeout(() => router.push("/chat"), 540);
   };

@@ -4,13 +4,59 @@ import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useAnimation, AnimationControls } from "framer-motion";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
 
 const BASE_SPEED = 1200;
 const MIN_SPEED = 150;
 const SPEED_STEP = 150;
+
+function TrashCan({ size, onClick, controls }: { size: number; onClick: () => void; controls: AnimationControls }) {
+  return (
+    <motion.div
+      onClick={onClick}
+      animate={controls}
+      style={{ cursor: "pointer", userSelect: "none", WebkitUserSelect: "none" }}
+      whileTap={{ scale: 0.92 }}
+    >
+      <motion.div
+        animate={{
+          scaleX: [1, 0.93, 1.07, 0.96, 1.03, 1],
+          scaleY: [1, 1.07, 0.94, 1.03, 0.98, 1],
+          y: [0, 2, -4, 1, -1, 0],
+        }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.1 }}
+      >
+        <Image
+          src="/bruning-trash-can.png"
+          alt="불타는 쓰레기통"
+          width={size}
+          height={size}
+          style={{ objectFit: "contain", pointerEvents: "none" }}
+          priority
+        />
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function HintText({ tapped }: { tapped: boolean }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={tapped ? "tapped" : "hint"}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        transition={{ duration: 0.25 }}
+        style={{ fontSize: 13, color: "#9E9E9B", margin: 0, textAlign: "center", letterSpacing: "-0.005em" }}
+      >
+        {tapped ? "🔥 빨라지고 있어요!" : "연타하면 더 빨리 타요"}
+      </motion.p>
+    </AnimatePresence>
+  );
+}
 
 function TrashContent() {
   const router = useRouter();
@@ -61,48 +107,6 @@ function TrashContent() {
 
   const progress = Math.min(burned / total, 1);
 
-  const TrashCan = ({ size }: { size: number }) => (
-    <motion.div
-      onClick={handleTap}
-      animate={trashControls}
-      style={{ cursor: "pointer", userSelect: "none", WebkitUserSelect: "none" }}
-      whileTap={{ scale: 0.92 }}
-    >
-      <motion.div
-        animate={{
-          scaleX: [1, 0.93, 1.07, 0.96, 1.03, 1],
-          scaleY: [1, 1.07, 0.94, 1.03, 0.98, 1],
-          y: [0, 2, -4, 1, -1, 0],
-        }}
-        transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.1 }}
-      >
-        <Image
-          src="/bruning-trash-can.png"
-          alt="불타는 쓰레기통"
-          width={size}
-          height={size}
-          style={{ objectFit: "contain", pointerEvents: "none" }}
-          priority
-        />
-      </motion.div>
-    </motion.div>
-  );
-
-  const HintText = () => (
-    <AnimatePresence mode="wait">
-      <motion.p
-        key={tapped ? "tapped" : "hint"}
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -4 }}
-        transition={{ duration: 0.25 }}
-        style={{ fontSize: 13, color: "#9E9E9B", margin: 0, textAlign: "center", letterSpacing: "-0.005em" }}
-      >
-        {tapped ? "🔥 빨라지고 있어요!" : "연타하면 더 빨리 타요"}
-      </motion.p>
-    </AnimatePresence>
-  );
-
   return (
     <WebLayout sidebar={<WebSidebar activeItem="list" hideTrash />}>
       {/* 모바일 */}
@@ -149,7 +153,7 @@ function TrashContent() {
             감정이 모두 불타는 중입니다..
           </p>
 
-          <TrashCan size={260} />
+          <TrashCan size={260} onClick={handleTap} controls={trashControls} />
 
           <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ width: "100%", height: 8, borderRadius: 9999, background: "#E2E2DF", overflow: "hidden" }}>
@@ -162,7 +166,7 @@ function TrashContent() {
             <p style={{ fontSize: 16, fontWeight: 600, color: "#121211", letterSpacing: "-0.02em", margin: 0, textAlign: "center" }}>
               {burned} / {total} 소각됨
             </p>
-            <HintText />
+            <HintText tapped={tapped} />
           </div>
         </div>
       </main>
@@ -176,7 +180,7 @@ function TrashContent() {
           감정이 모두 불타는 중입니다..
         </p>
 
-        <TrashCan size={300} />
+        <TrashCan size={300} onClick={handleTap} controls={trashControls} />
 
         <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ width: "100%", height: 8, borderRadius: 9999, background: "#E2E2DF", overflow: "hidden" }}>
