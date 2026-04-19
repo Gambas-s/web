@@ -131,16 +131,22 @@ export default function WebSidebar({
           justifyContent: "center",
         }}
       >
-        <div
+        <motion.button
+          type="button"
+          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : undefined}
           onClick={crumpledCount > 0 ? onTrashClick : undefined}
           style={{
             position: "relative",
             width: 120,
             height: 120,
             cursor: crumpledCount > 0 ? "pointer" : "default",
+            background: "none",
+            border: "none",
+            padding: 0,
           }}
+          animate={trashControls}
         >
-          <motion.div animate={trashControls} style={{ width: "100%", height: "100%" }}>
+          <motion.div style={{ width: "100%", height: "100%" }}>
             <Image
               src="/trash-can.png"
               alt="쓰레기통"
@@ -180,7 +186,7 @@ export default function WebSidebar({
               </span>
             </div>
           )}
-        </div>
+        </motion.button>
       </div>
 
       {/* Bottom section */}
@@ -222,6 +228,8 @@ export default function WebSidebar({
 
         {/* User profile button */}
         <button
+          aria-label="사용자 프로필"
+          onClick={() => {}}
           style={{
             display: "flex",
             alignItems: "center",
