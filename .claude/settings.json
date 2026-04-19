@@ -1,3 +1,8 @@
 {
-  "enabledMcpjsonServers": ["agentation"]
+  "enabledMcpjsonServers": [
+    "agentation"
+  ],
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  }
 }
