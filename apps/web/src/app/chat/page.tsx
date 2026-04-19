@@ -48,6 +48,7 @@ export default function ChatPage() {
   const [hintVisible, setHintVisible] = useState(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const desktopBottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
@@ -70,6 +71,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    desktopBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // 모바일 입력 내용에 따라 textarea 높이 자동 조절
@@ -474,7 +476,7 @@ export default function ChatPage() {
               );
             })}
           </AnimatePresence>
-          <div ref={bottomRef} />
+          <div ref={desktopBottomRef} />
         </section>
 
         {/* 데스크톱 입력바 */}
