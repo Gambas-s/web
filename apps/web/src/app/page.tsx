@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
 
@@ -38,7 +38,15 @@ function WebHomeContent() {
   const router = useRouter();
   const [navigating, setNavigating] = useState(false);
   const [cloneRect, setCloneRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [windowHeight, setWindowHeight] = useState(0);
   const inputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setWindowHeight(window.innerHeight);
+    const onResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const handleStartChat = () => {
     if (navigating) return;
@@ -51,7 +59,7 @@ function WebHomeContent() {
   };
 
   // 채팅 입력바의 최종 위치: 화면 하단 padding 24px + 입력바 높이 56px + 상단 padding 16px
-  const targetTop = typeof window !== "undefined" ? window.innerHeight - 96 : 0;
+  const targetTop = windowHeight ? windowHeight - 96 : 0;
 
   return (
     <>

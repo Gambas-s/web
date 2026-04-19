@@ -35,6 +35,85 @@ const INITIAL_MESSAGE: Message = {
   content: "무슨일이야?",
 };
 
+const generateId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+};
+
+// ─── 공유 서브컴포넌트 ────────────────────────────────────────
+
+function MessageList({
+  messages,
+  firstUserMsgId,
+  hintVisible,
+  onCrumple,
+  hint,
+}: {
+  messages: Message[];
+  firstUserMsgId: string | undefined;
+  hintVisible: boolean;
+  onCrumple: (id: string) => void;
+  hint: React.ReactNode;
+}) {
+  return (
+    <AnimatePresence initial={false}>
+      {messages.map((msg) => {
+        const isFirstUserMsg = msg.id === firstUserMsgId;
+        return (
+          <React.Fragment key={msg.id}>
+            <MessageBubble message={msg} onCrumple={() => onCrumple(msg.id)} />
+            {isFirstUserMsg && hintVisible && hint}
+          </React.Fragment>
+        );
+      })}
+    </AnimatePresence>
+  );
+}
+
+function SendButton({
+  onClick,
+  disabled,
+  size = 44,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  size?: number;
+}) {
+  const active = !disabled;
+  const svgSize = size >= 44 ? 16 : 14;
+  return (
+    <motion.button
+      aria-label="전송"
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={active ? { scale: 0.92 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 20 }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 9999,
+        border: "none",
+        background: "#121211",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: active ? "pointer" : "default",
+        opacity: active ? 1 : 0.4,
+        transition: "opacity 0.15s ease",
+        flexShrink: 0,
+      }}
+    >
+      <svg width={svgSize} height={svgSize} viewBox="0 0 16 16" fill="none">
+        <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </motion.button>
+  );
+}
+
+// ─── 메인 페이지 ──────────────────────────────────────────────
+
 export default function ChatPage() {
   const router = useRouter();
   const [showTrashModal, setShowTrashModal] = useState(false);
@@ -80,7 +159,6 @@ export default function ChatPage() {
     desktopBottomRef.current?.scrollIntoView({ behavior });
   }, [messages]);
 
-  // 모바일 입력 내용에 따라 textarea 높이 자동 조절
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -88,7 +166,6 @@ export default function ChatPage() {
     el.style.height = `${el.scrollHeight}px`;
   }, [input]);
 
-  // 데스크톱 입력 내용에 따라 textarea 높이 자동 조절
   useEffect(() => {
     const el = desktopTextareaRef.current;
     if (!el) return;
@@ -101,8 +178,8 @@ export default function ChatPage() {
     const trimmed = input.trim();
     if (!trimmed || isStreaming) return;
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: trimmed };
-    const aiId = crypto.randomUUID();
+    const userMsg: Message = { id: generateId(), role: "user", content: trimmed };
+    const aiId = generateId();
     const aiMsg: Message = { id: aiId, role: "ai", content: "", pending: true };
 
     setMessages((prev) => [...prev, userMsg, aiMsg]);
@@ -160,6 +237,45 @@ export default function ChatPage() {
       sendMessage();
     }
   };
+
+  // 모바일 힌트: testid + 애니메이션 포함
+  const mobileHint = (
+    <motion.div
+      data-testid="longpress-hint"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+    >
+      <motion.span
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        style={{ fontSize: 12, color: "#9E9E9B", letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 4 }}
+      >
+        꾹 눌러봐
+        <motion.span
+          animate={{ y: [0, 3, 0] }}
+          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+        >
+          👆
+        </motion.span>
+      </motion.span>
+    </motion.div>
+  );
+
+  // 데스크톱 힌트: 심플 텍스트
+  const desktopHint = (
+    <motion.div
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+    >
+      <span style={{ fontSize: 12, color: "#9E9E9B" }}>꾹 눌러봐 👆</span>
+    </motion.div>
+  );
 
   return (
     <WebLayout
@@ -225,14 +341,7 @@ export default function ChatPage() {
             </svg>
           </motion.button>
 
-          <span
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: "#121211",
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <span style={{ fontSize: 17, fontWeight: 700, color: "#121211", letterSpacing: "-0.02em" }}>
             gamza
           </span>
 
@@ -304,51 +413,13 @@ export default function ChatPage() {
             gap: 12,
           }}
         >
-          <AnimatePresence initial={false}>
-            {messages.map((msg) => {
-              const isFirstUserMsg = msg.id === firstUserMsgId;
-              return (
-                <React.Fragment key={msg.id}>
-                  <MessageBubble
-                    message={msg}
-                    onCrumple={() => crumpleMessage(msg.id)}
-                  />
-                  {isFirstUserMsg && hintVisible && (
-                    <motion.div
-                      data-testid="longpress-hint"
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                      style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
-                    >
-                      <motion.span
-                        animate={{ opacity: [0.5, 1, 0.5] }}
-                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                        style={{
-                          fontSize: 12,
-                          color: "#9E9E9B",
-                          letterSpacing: "-0.01em",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        꾹 눌러봐
-                        <motion.span
-                          animate={{ y: [0, 3, 0] }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                        >
-                          👆
-                        </motion.span>
-                      </motion.span>
-                    </motion.div>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </AnimatePresence>
-
+          <MessageList
+            messages={messages}
+            firstUserMsgId={firstUserMsgId}
+            hintVisible={hintVisible}
+            onCrumple={crumpleMessage}
+            hint={mobileHint}
+          />
           <div ref={bottomRef} />
         </section>
 
@@ -391,31 +462,7 @@ export default function ChatPage() {
               boxSizing: "border-box",
             }}
           />
-          <motion.button
-            aria-label="전송"
-            onClick={sendMessage}
-            disabled={!input.trim() || isStreaming}
-            whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
-            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 9999,
-              border: "none",
-              background: "#121211",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: input.trim() && !isStreaming ? "pointer" : "default",
-              opacity: input.trim() && !isStreaming ? 1 : 0.4,
-              transition: "opacity 0.15s ease",
-              flexShrink: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </motion.button>
+          <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming} size={44} />
         </div>
       </main>
 
@@ -466,9 +513,9 @@ export default function ChatPage() {
             gap: 0,
           }}
         >
-          {/* 날짜 구분선 */}
+          {/* 날짜 구분선 — suppressHydrationWarning: SSR/CSR 날짜 불일치 방지 */}
           <div style={{ margin: "8px 0 16px", width: "100%", maxWidth: 480, textAlign: "center" }}>
-            <span style={{ fontSize: 12, color: "#9E9E9B" }}>
+            <span suppressHydrationWarning style={{ fontSize: 12, color: "#9E9E9B" }}>
               오늘{" "}
               {new Date()
                 .toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })
@@ -478,27 +525,13 @@ export default function ChatPage() {
           </div>
 
           <div style={{ width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 12 }}>
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => {
-                const isFirstUserMsg = msg.id === firstUserMsgId;
-                return (
-                  <React.Fragment key={msg.id}>
-                    <MessageBubble message={msg} onCrumple={() => crumpleMessage(msg.id)} />
-                    {isFirstUserMsg && hintVisible && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                        style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
-                      >
-                        <span style={{ fontSize: 12, color: "#9E9E9B" }}>꾹 눌러봐 👆</span>
-                      </motion.div>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </AnimatePresence>
+            <MessageList
+              messages={messages}
+              firstUserMsgId={firstUserMsgId}
+              hintVisible={hintVisible}
+              onCrumple={crumpleMessage}
+              hint={desktopHint}
+            />
           </div>
           <div ref={desktopBottomRef} />
         </section>
@@ -544,31 +577,7 @@ export default function ChatPage() {
                 padding: "4px 0",
               }}
             />
-            <motion.button
-              aria-label="전송"
-              onClick={sendMessage}
-              disabled={!input.trim() || isStreaming}
-              whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
-              transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 9999,
-                border: "none",
-                background: "#121211",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: input.trim() && !isStreaming ? "pointer" : "default",
-                opacity: input.trim() && !isStreaming ? 1 : 0.4,
-                transition: "opacity 0.15s ease",
-                flexShrink: 0,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </motion.button>
+            <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming} size={36} />
           </div>
         </div>
       </motion.div>
@@ -703,10 +712,8 @@ function MessageBubble({
   const filterId = useId().replace(/:/g, "");
   const dispMapRef = useRef<SVGFEDisplacementMapElement>(null);
 
-  // pressProgress: 0 = 정상, 1 = 완전히 구겨짐
   const pressProgress = useMotionValue(0);
 
-  // SVG 변위 필터를 pressProgress에 동기화
   useEffect(() => {
     return pressProgress.on("change", (v) => {
       if (dispMapRef.current) {
@@ -790,7 +797,7 @@ function MessageBubble({
     >
       {isAI && <Avatar />}
 
-      {/* SVG 변위 필터 (꾸기기 텍스처) */}
+      {/* SVG 변위 필터 (구기기 텍스처) */}
       <svg width="0" height="0" style={{ position: "absolute" }}>
         <defs>
           <filter id={`crumple-${filterId}`} x="-20%" y="-20%" width="140%" height="140%">
