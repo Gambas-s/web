@@ -54,10 +54,12 @@ export default function ChatPage() {
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
 
   useEffect(() => {
+    const refs = timerRefs.current;
+    const hintTimer = hintTimerRef.current;
     return () => {
-      clearTimeout(timerRefs.current.timeout);
-      clearInterval(timerRefs.current.interval);
-      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      clearTimeout(refs.timeout);
+      clearInterval(refs.interval);
+      if (hintTimer) clearTimeout(hintTimer);
     };
   }, []);
 
