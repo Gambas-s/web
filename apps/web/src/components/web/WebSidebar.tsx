@@ -3,45 +3,70 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
-import { useEffect } from "react";
 
-export type SidebarActiveItem = "new" | "list" | "history";
+export type SidebarActiveItem = "new" | "list" | "history" | "none";
 
 interface WebSidebarProps {
   activeItem: SidebarActiveItem;
   crumpledCount?: number;
   onTrashClick?: () => void;
+  hideTrash?: boolean;
 }
 
 const MOCK_TIMER = "14 : 23 : 01";
 const MOCK_USER = { name: "나는야 주인", totalBurned: 1234, streak: 21 };
 
+function IconPlus() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconList() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 5H13M3 8H13M3 11H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 5.5V8L10 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
-  { id: "new" as SidebarActiveItem, icon: "+", label: "새 쓰레기통", href: "/" },
-  { id: "list" as SidebarActiveItem, icon: "≡", label: "쓰레기통 내역", href: "/chat" },
-  { id: "history" as SidebarActiveItem, icon: "⏰", label: "소각 기록", href: "/trash-fin" },
+  { id: "new" as SidebarActiveItem, icon: <IconPlus />, label: "새 쓰레기통", href: "/chat", disabled: false },
+  { id: "list" as SidebarActiveItem, icon: <IconList />, label: "쓰레기통", href: "/chat", disabled: false },
+  { id: "history" as SidebarActiveItem, icon: <IconClock />, label: "소각 기록", href: "/log", disabled: false },
 ];
 
 export default function WebSidebar({
   activeItem,
   crumpledCount = 0,
   onTrashClick,
+  hideTrash = false,
 }: WebSidebarProps) {
   const router = useRouter();
   const trashControls = useAnimation();
 
-  useEffect(() => {
-    if (crumpledCount > 0) {
-      trashControls.start({
-        rotate: [0, -8, 8, -6, 6, -3, 3, 0],
-        scale: [1, 1.05, 1.05, 1.03, 1.03, 1.01, 1.01, 1],
-        transition: {
-          duration: 0.6,
-          ease: "easeInOut",
-        },
-      });
+  const handleTrashClick = () => {
+    trashControls.start({
+      y: [0, -14, 6, -8, 4, -3, 2, 0],
+      rotate: [0, -6, 6, -4, 4, -2, 2, 0],
+      scale: [1, 1.1, 0.94, 1.06, 0.97, 1.02, 0.99, 1],
+      transition: { duration: 0.75, ease: "easeOut" },
+    });
+    if (crumpledCount > 0 && onTrashClick) {
+      onTrashClick();
     }
-  }, [crumpledCount, trashControls]);
+  };
 
   return (
     <aside
@@ -59,7 +84,8 @@ export default function WebSidebar({
       }}
     >
       {/* Logo */}
-      <div
+      <button
+        onClick={() => router.push("/")}
         style={{
           fontSize: 28,
           fontWeight: 800,
@@ -67,10 +93,16 @@ export default function WebSidebar({
           letterSpacing: "-0.03em",
           marginBottom: 28,
           lineHeight: 1.1,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          textAlign: "left",
+          fontFamily: "inherit",
         }}
       >
         감바쓰
-      </div>
+      </button>
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -79,7 +111,7 @@ export default function WebSidebar({
           return (
             <button
               key={item.id}
-              onClick={() => router.push(item.href)}
+              onClick={() => item.href && router.push(item.href)}
               aria-current={isActive ? "page" : undefined}
               style={{
                 display: "flex",
@@ -97,11 +129,11 @@ export default function WebSidebar({
             >
               <span
                 style={{
-                  fontSize: 16,
                   color: isActive ? "#121211" : "#6E6E6B",
                   width: 20,
-                  textAlign: "center",
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
@@ -123,36 +155,40 @@ export default function WebSidebar({
         })}
       </nav>
 
-      {/* Center area — trash can */}
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Trash can — bottom area */}
       <div
         style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
+          display: hideTrash ? "none" : "flex",
           justifyContent: "center",
+          marginBottom: 20,
         }}
       >
         <motion.button
           type="button"
-          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : "쓰레기통 (비어있음)"}
-          onClick={crumpledCount > 0 ? onTrashClick : undefined}
+          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : "쓰레기통"}
+          onClick={handleTrashClick}
           style={{
             position: "relative",
-            width: 120,
-            height: 120,
-            cursor: crumpledCount > 0 ? "pointer" : "default",
+            width: 110,
+            height: 110,
+            cursor: "pointer",
             background: "none",
             border: "none",
             padding: 0,
           }}
           animate={trashControls}
+          whileHover={{ scale: 1.04 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
           <motion.div style={{ width: "100%", height: "100%" }}>
             <Image
               src="/trash-can.png"
               alt="쓰레기통"
-              width={120}
-              height={120}
+              width={110}
+              height={110}
               style={{ objectFit: "contain", width: "100%", height: "100%" }}
             />
           </motion.div>
