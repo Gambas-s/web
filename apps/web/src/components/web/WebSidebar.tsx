@@ -80,6 +80,7 @@ export default function WebSidebar({
             <button
               key={item.id}
               onClick={() => router.push(item.href)}
+              aria-current={isActive ? "page" : undefined}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -133,7 +134,7 @@ export default function WebSidebar({
       >
         <motion.button
           type="button"
-          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : undefined}
+          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : "쓰레기통 (비어있음)"}
           onClick={crumpledCount > 0 ? onTrashClick : undefined}
           style={{
             position: "relative",
