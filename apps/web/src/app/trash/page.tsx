@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence, useAnimation, AnimationControls } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
 
@@ -12,7 +12,7 @@ const BASE_SPEED = 1200;
 const MIN_SPEED = 150;
 const SPEED_STEP = 150;
 
-function TrashCan({ size, onClick, controls }: { size: number; onClick: () => void; controls: AnimationControls }) {
+function TrashCan({ size, onClick, controls }: { size: number; onClick: () => void; controls: ReturnType<typeof useAnimation> }) {
   return (
     <motion.div
       onClick={onClick}
@@ -193,7 +193,7 @@ function TrashContent() {
           <p style={{ fontSize: 16, fontWeight: 600, color: "#121211", letterSpacing: "-0.02em", margin: 0, textAlign: "center" }}>
             {burned} / {total} 소각됨
           </p>
-          <HintText />
+          <HintText tapped={tapped} />
         </div>
       </div>
     </WebLayout>
