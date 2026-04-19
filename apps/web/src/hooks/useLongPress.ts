@@ -28,6 +28,7 @@ export function useLongPress({
 
   const onPointerDown = useCallback(() => {
     if (disabled) return;
+    if (timer.current) clearTimeout(timer.current);
     setIsPressing(true);
     timer.current = setTimeout(() => {
       setIsPressing(false);
