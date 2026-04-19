@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 관련 문서
 
-- 디자인 관련 작업 시 `apps/web/DESIGN.md`를 참고한다.
-- 프로그래밍 시 `/Users/gabin/Documents/Projects/gambass/AGENTS.md`를 항상 읽고 해당 순서대로 진행한다.
+- 디자인 관련 작업 시 @apps/web/DESIGN.md 를 참고한다.
+- 프로그래밍 시 @AGENTS.md 를 항상 읽고 해당 순서대로 진행한다.
 
 ## 코딩 컨벤션
 
@@ -76,19 +76,4 @@ curl http://localhost:4000/api/health
 curl -N -X POST http://localhost:4000/api/chat \
   -H "Content-Type: application/json" \
   -d '{"sessionId":"test-123","message":"스트레스 받아"}'
-```
-
-**환경변수**
-
-`apps/server/.env` (`.env.example` 참고):
-```
-OPENAI_API_KEY=sk-...
-REDIS_URL=redis://localhost:6379
-ALLOWED_ORIGINS=http://localhost:3000
-PORT=4000
-```
-
-`apps/web/.env.local` (`.env.local.example` 참고):
-```
-NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
