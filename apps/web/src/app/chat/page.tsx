@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate, useAnimation } from "framer-motion";
 import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
+import { WebLayout } from "@/components/web/WebLayout";
+import WebSidebar from "@/components/web/WebSidebar";
 
 type Role = "ai" | "user";
 
@@ -47,6 +49,7 @@ export default function ChatPage() {
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
 
   useEffect(() => {
@@ -69,9 +72,17 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 입력 내용에 따라 textarea 높이 자동 조절
+  // 모바일 입력 내용에 따라 textarea 높이 자동 조절
   useEffect(() => {
     const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
+  // 데스크톱 입력 내용에 따라 textarea 높이 자동 조절
+  useEffect(() => {
+    const el = desktopTextareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
@@ -142,252 +153,395 @@ export default function ChatPage() {
   };
 
   return (
-    <main
-      style={{
-        width: "100%",
-        height: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        background: "#FDFDFC",
-        position: "relative",
-        overflow: "hidden",
-      }}
+    <WebLayout
+      sidebar={
+        <WebSidebar
+          activeItem="list"
+          crumpledCount={crumpledCount}
+          onTrashClick={() => setShowTrashModal(true)}
+        />
+      }
     >
-      {/* 헤더 */}
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+      {/* Mobile: 기존 레이아웃 */}
+      <main
+        className="md:hidden"
         style={{
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: 56,
-          flexShrink: 0,
-          paddingInline: 16,
-          background: "#FDFDFC",
-        }}
-      >
-        <motion.button
-          aria-label="뒤로가기"
-          onClick={() => router.push("/")}
-          whileTap={{ scale: 0.92 }}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          style={{
-            position: "absolute",
-            left: 16,
-            width: 44,
-            height: 44,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#121211",
-            borderRadius: 9999,
-          }}
-        >
-          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
-            <path d="M9 1L1 9L9 17" stroke="#121211" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </motion.button>
-
-        <span
-          style={{
-            fontSize: 17,
-            fontWeight: 700,
-            color: "#121211",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          gamza
-        </span>
-
-        <AnimatePresence>
-          {crumpledCount > 0 && (
-            <motion.button
-              aria-label="버리러가기"
-              onClick={() => setShowTrashModal(true)}
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              whileTap={{ scale: 0.88 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              style={{
-                position: "absolute",
-                right: 16,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 4,
-              }}
-            >
-              <motion.div
-                animate={trashControls}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
-              </motion.div>
-              <motion.span
-                key={crumpledCount}
-                initial={{ scale: 1.8, opacity: 0, y: -4 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 600, damping: 18 }}
-                data-testid="crumple-badge"
-                style={{
-                  minWidth: 20,
-                  height: 20,
-                  borderRadius: 9999,
-                  background: "#121211",
-                  color: "#FDFDFC",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingInline: 5,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {crumpledCount}
-              </motion.span>
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </motion.header>
-
-      {/* 메시지 영역 */}
-      <section
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px 20px",
-          paddingBottom: 16,
+          width: "100%",
+          height: "100dvh",
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          background: "#FDFDFC",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
-        <AnimatePresence initial={false}>
-          {messages.map((msg) => {
-            const isFirstUserMsg = msg.id === firstUserMsgId;
-            return (
-              <React.Fragment key={msg.id}>
-                <MessageBubble
-                  message={msg}
-                  onCrumple={() => crumpleMessage(msg.id)}
-                />
-                {isFirstUserMsg && hintVisible && (
-                  <motion.div
-                    data-testid="longpress-hint"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-                    style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
-                  >
-                    <motion.span
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                      style={{
-                        fontSize: 12,
-                        color: "#9E9E9B",
-                        letterSpacing: "-0.01em",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      꾹 눌러봐
-                      <motion.span
-                        animate={{ y: [0, 3, 0] }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        👆
-                      </motion.span>
-                    </motion.span>
-                  </motion.div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </AnimatePresence>
-
-        <div ref={bottomRef} />
-      </section>
-
-      {/* 입력바 */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "12px 16px",
-          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-          background: "#FFFFFF",
-          boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 10,
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="메세지 입력.."
-          rows={1}
+        {/* 헤더 */}
+        <motion.header
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
           style={{
-            flex: 1,
-            minHeight: 44,
-            maxHeight: 120,
-            borderRadius: 22,
-            border: "none",
-            background: "#F4F4F2",
-            padding: "11px 16px",
-            fontSize: 15,
-            color: "#121211",
-            outline: "none",
-            fontFamily: "inherit",
-            letterSpacing: "-0.005em",
-            resize: "none",
-            overflowY: "auto",
-            lineHeight: 1.5,
-            boxSizing: "border-box",
-          }}
-        />
-        <motion.button
-          aria-label="전송"
-          onClick={sendMessage}
-          disabled={!input.trim() || isStreaming}
-          whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 9999,
-            border: "none",
-            background: "#121211",
+            position: "relative",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: input.trim() && !isStreaming ? "pointer" : "default",
-            opacity: input.trim() && !isStreaming ? 1 : 0.4,
-            transition: "opacity 0.15s ease",
+            height: 56,
             flexShrink: 0,
+            paddingInline: 16,
+            background: "#FDFDFC",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </motion.button>
+          <motion.button
+            aria-label="뒤로가기"
+            onClick={() => router.push("/")}
+            whileTap={{ scale: 0.92 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            style={{
+              position: "absolute",
+              left: 16,
+              width: 44,
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#121211",
+              borderRadius: 9999,
+            }}
+          >
+            <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+              <path d="M9 1L1 9L9 17" stroke="#121211" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </motion.button>
+
+          <span
+            style={{
+              fontSize: 17,
+              fontWeight: 700,
+              color: "#121211",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            gamza
+          </span>
+
+          <AnimatePresence>
+            {crumpledCount > 0 && (
+              <motion.button
+                aria-label="버리러가기"
+                onClick={() => setShowTrashModal(true)}
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.7 }}
+                whileTap={{ scale: 0.88 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
+              >
+                <motion.div
+                  animate={trashControls}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Image src="/trash-can.png" alt="쓰레기통" width={28} height={28} style={{ objectFit: "contain" }} />
+                </motion.div>
+                <motion.span
+                  key={crumpledCount}
+                  initial={{ scale: 1.8, opacity: 0, y: -4 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                  data-testid="crumple-badge"
+                  style={{
+                    minWidth: 20,
+                    height: 20,
+                    borderRadius: 9999,
+                    background: "#121211",
+                    color: "#FDFDFC",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingInline: 5,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {crumpledCount}
+                </motion.span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </motion.header>
+
+        {/* 메시지 영역 */}
+        <section
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "16px 20px",
+            paddingBottom: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => {
+              const isFirstUserMsg = msg.id === firstUserMsgId;
+              return (
+                <React.Fragment key={msg.id}>
+                  <MessageBubble
+                    message={msg}
+                    onCrumple={() => crumpleMessage(msg.id)}
+                  />
+                  {isFirstUserMsg && hintVisible && (
+                    <motion.div
+                      data-testid="longpress-hint"
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                      style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+                    >
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                        style={{
+                          fontSize: 12,
+                          color: "#9E9E9B",
+                          letterSpacing: "-0.01em",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        꾹 눌러봐
+                        <motion.span
+                          animate={{ y: [0, 3, 0] }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          👆
+                        </motion.span>
+                      </motion.span>
+                    </motion.div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </AnimatePresence>
+
+          <div ref={bottomRef} />
+        </section>
+
+        {/* 입력바 */}
+        <div
+          style={{
+            flexShrink: 0,
+            padding: "12px 16px",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+            background: "#FFFFFF",
+            boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
+            display: "flex",
+            alignItems: "flex-end",
+            gap: 10,
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="메세지 입력.."
+            rows={1}
+            style={{
+              flex: 1,
+              minHeight: 44,
+              maxHeight: 120,
+              borderRadius: 22,
+              border: "none",
+              background: "#F4F4F2",
+              padding: "11px 16px",
+              fontSize: 15,
+              color: "#121211",
+              outline: "none",
+              fontFamily: "inherit",
+              letterSpacing: "-0.005em",
+              resize: "none",
+              overflowY: "auto",
+              lineHeight: 1.5,
+              boxSizing: "border-box",
+            }}
+          />
+          <motion.button
+            aria-label="전송"
+            onClick={sendMessage}
+            disabled={!input.trim() || isStreaming}
+            whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 9999,
+              border: "none",
+              background: "#121211",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: input.trim() && !isStreaming ? "pointer" : "default",
+              opacity: input.trim() && !isStreaming ? 1 : 0.4,
+              transition: "opacity 0.15s ease",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </motion.button>
+        </div>
+      </main>
+
+      {/* Desktop: 웹 레이아웃 */}
+      <div
+        className="hidden md:flex flex-col"
+        style={{ width: "100%", height: "100dvh", background: "#FDFDFC", overflow: "hidden" }}
+      >
+        {/* 데스크톱 헤더 */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 56,
+            flexShrink: 0,
+            borderBottom: "1px solid #E2E2DF",
+          }}
+        >
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#121211", letterSpacing: "-0.02em" }}>감바쓰</span>
+        </div>
+
+        {/* 데스크톱 메시지 영역 */}
+        <section
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "24px 40px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {/* 날짜 구분선 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "#E2E2DF" }} />
+            <span style={{ fontSize: 12, color: "#9E9E9B" }}>
+              오늘{" "}
+              {new Date()
+                .toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" })
+                .replace(/\.\s/g, ".")
+                .replace(/\.$/, "")}
+            </span>
+            <div style={{ flex: 1, height: 1, background: "#E2E2DF" }} />
+          </div>
+
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => {
+              const isFirstUserMsg = msg.id === firstUserMsgId;
+              return (
+                <React.Fragment key={msg.id}>
+                  <MessageBubble message={msg} onCrumple={() => crumpleMessage(msg.id)} />
+                  {isFirstUserMsg && hintVisible && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                      style={{ display: "flex", justifyContent: "flex-end", paddingRight: 12, marginTop: -4 }}
+                    >
+                      <span style={{ fontSize: 12, color: "#9E9E9B" }}>꾹 눌러봐 👆</span>
+                    </motion.div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </AnimatePresence>
+          <div ref={bottomRef} />
+        </section>
+
+        {/* 데스크톱 입력바 */}
+        <div style={{ flexShrink: 0, padding: "16px 40px 24px", background: "#FDFDFC" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 10,
+              background: "#F4F4F2",
+              borderRadius: 9999,
+              padding: "10px 10px 10px 20px",
+            }}
+          >
+            <textarea
+              ref={desktopTextareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="메세지 입력.."
+              rows={1}
+              style={{
+                flex: 1,
+                border: "none",
+                background: "transparent",
+                fontSize: 15,
+                color: "#121211",
+                outline: "none",
+                fontFamily: "inherit",
+                letterSpacing: "-0.005em",
+                resize: "none",
+                overflowY: "auto",
+                lineHeight: 1.5,
+                maxHeight: 120,
+                padding: "4px 0",
+              }}
+            />
+            <motion.button
+              aria-label="전송"
+              onClick={sendMessage}
+              disabled={!input.trim() || isStreaming}
+              whileTap={input.trim() && !isStreaming ? { scale: 0.92 } : {}}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 9999,
+                border: "none",
+                background: "#121211",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: input.trim() && !isStreaming ? "pointer" : "default",
+                opacity: input.trim() && !isStreaming ? 1 : 0.4,
+                transition: "opacity 0.15s ease",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </motion.button>
+          </div>
+        </div>
       </div>
 
-      {/* 쓰레기 버리기 확인 모달 */}
+      {/* 쓰레기 버리기 확인 모달 — position: fixed 이므로 mobile/desktop 공용 */}
       <AnimatePresence>
         {showTrashModal && (
           <>
@@ -493,7 +647,7 @@ export default function ChatPage() {
           </>
         )}
       </AnimatePresence>
-    </main>
+    </WebLayout>
   );
 }
 
@@ -581,7 +735,7 @@ function MessageBubble({
       >
         {isAI && <Avatar />}
         <Image
-          src={isAI ? "/trash-paper-white.png" : "/trash-paper.png"}
+          src={isAI ? "/trash-paper-white.png" : "/trash-paper-black.png"}
           alt="구겨진 종이"
           width={64}
           height={64}
