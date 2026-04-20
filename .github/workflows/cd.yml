@@ -16,10 +16,9 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
 
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}   # job 레벨에 env 설정
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}  
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Deploy to Railway
         run: railway up --service server
