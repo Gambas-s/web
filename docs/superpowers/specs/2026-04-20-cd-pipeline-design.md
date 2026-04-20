@@ -30,13 +30,11 @@
 ```
 cd.yml
 └── on: workflow_run (CI / main / completed)
-    └── job: deploy-server
+    └── job: deploy-server (timeout: 10분)
         ├── if: github.event.workflow_run.conclusion == 'success'
         ├── actions/checkout@v4
-        ├── pnpm/action-setup@v4
-        ├── setup-node@v4
-        ├── pnpm install --frozen-lockfile
-        └── railway up (RAILWAY_TOKEN secret)
+        ├── npm install -g @railway/cli@3
+        └── railway up --service server (RAILWAY_TOKEN secret)
 ```
 
 ---
