@@ -15,12 +15,10 @@ jobs:
 
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Link to Railway Project
-        run: railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
 
       - name: Deploy to Railway
         run: railway up --service server --ci
