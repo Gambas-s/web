@@ -18,7 +18,6 @@ const makeMockStream = (chunks: string[]) => ({
 });
 
 const mockOpenai = {
-  moderations: { create: jest.fn() },
   chat: { completions: { create: jest.fn() } },
 };
 
@@ -47,21 +46,23 @@ describe('ChatService', () => {
   });
 
   describe('streamChat', () => {
-    it('Moderation flagged이면 경고 메시지를 emit하고 Redis에 저장하지 않는다', async () => {
-      mockOpenai.moderations.create.mockResolvedValue({ results: [{ flagged: true }] });
+    it('garbled 응답(중국어/일본어 포함)이면 retry 이벤트를 emit하고 Redis에 저장하지 않는다', async () => {
+      mockSessionService.getData.mockResolvedValue({ createdAt: 1, messages: [] });
+      mockOpenai.chat.completions.create.mockResolvedValue(
+        makeMockStream(['안녕하세요 你好 こんにちは']),
+      );
       const res = makeMockRes();
 
-      await service.streamChat('session-1', '나쁜말', res);
+      await service.streamChat('session-1', '안녕', res);
 
       expect(res.write).toHaveBeenCalledWith(
-        expect.stringContaining('헉..괜춘?'),
+        expect.stringContaining('"retry":true'),
       );
       expect(mockSessionService.appendMessage).not.toHaveBeenCalled();
       expect(res.end).toHaveBeenCalled();
     });
 
     it('정상 스트림이면 청킹된 SSE를 emit하고 Redis에 저장한다', async () => {
-      mockOpenai.moderations.create.mockResolvedValue({ results: [{ flagged: false }] });
       mockSessionService.getData.mockResolvedValue({ createdAt: 1, messages: [] });
       mockOpenai.chat.completions.create.mockResolvedValue(
         makeMockStream(['야 그거 진짜', ' 힘들었겠다.', ' 근데 솔직히']),
@@ -78,7 +79,6 @@ describe('ChatService', () => {
     });
 
     it('OpenAI 에러 시 fallback 메시지를 emit한다', async () => {
-      mockOpenai.moderations.create.mockResolvedValue({ results: [{ flagged: false }] });
       mockSessionService.getData.mockResolvedValue({ createdAt: 1, messages: [] });
       mockOpenai.chat.completions.create.mockRejectedValue(new Error('timeout'));
       const res = makeMockRes();

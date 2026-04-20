@@ -134,7 +134,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("gambass_session_id") : null
+  );
   const [hintShown, setHintShown] = useState(true);
   useEffect(() => {
     setHintShown(!!localStorage.getItem("gambass_hint_shown"));
@@ -278,7 +280,7 @@ export default function ChatPage() {
                   )
                 );
               }
-            } catch { /* ignore parse errors */ }
+            } catch (e) { console.error('Failed to parse SSE data:', data, e); }
           }
         }
       } catch {

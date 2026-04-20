@@ -8,7 +8,7 @@ export const openaiProvider = {
   useFactory: (config: ConfigService) =>
     new OpenAI({
       apiKey: config.get<string>('OPENAI_API_KEY'),
-      baseURL: 'https://api.groq.com/openai/v1',
+      baseURL: config.get<string>('OPENAI_BASE_URL'),
     }),
   inject: [ConfigService],
 };
