@@ -16,18 +16,10 @@ interface Message {
   content: string;
   pending?: boolean;
   crumpled?: boolean;
+  gamzaImage?: string;
 }
 
-const MOCK_RESPONSES = [
-  "ㅁㅊㅋㅋㅋ\n잼컨 발생 빨리 말해줘",
-  "어우 진짜? 더 말해봐",
-  "그래서 어떻게 됐어?",
-  "아 진짜 그건 너무하네",
-  "맞아, 그럴 수 있어. 계속해봐",
-  "헐 진짜?? 그 사람 왜 그래",
-  "ㅋㅋㅋ 맞아 그건 빡치지",
-  "다 털어놔, 여기 다 받아줄게",
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const INITIAL_MESSAGE: Message = {
   id: "init",
@@ -41,6 +33,27 @@ const generateId = (): string => {
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 };
+
+const GAMZA_IMAGE_MAP: Record<string, string> = {
+  기본: "/gamza/normal.png",
+  웃음: "/gamza/happy.png",
+  슬픔: "/gamza/sad.png",
+  놀람: "/gamza/surprise.png",
+  화남: "/gamza/upset.png",
+};
+
+function parseEmojiTag(content: string): { imageSrc: string | null; text: string } {
+  const match = content.match(/^\s*\[([^\]]+)\]\s*/);
+  if (match && GAMZA_IMAGE_MAP[match[1]]) {
+    return { imageSrc: GAMZA_IMAGE_MAP[match[1]], text: content.slice(match[0].length) };
+  }
+  return { imageSrc: null, text: content };
+}
+
+function splitIntoSentences(text: string): string[] {
+  const parts = text.split(/(?<=[.!?\n。？！])(?![.!?\n。？！])\s*/);
+  return parts.map((s) => s.trim()).filter(Boolean);
+}
 
 // ─── 공유 서브컴포넌트 ────────────────────────────────────────
 
@@ -59,11 +72,12 @@ function MessageList({
 }) {
   return (
     <AnimatePresence initial={false}>
-      {messages.map((msg) => {
+      {messages.map((msg, i) => {
         const isFirstUserMsg = msg.id === firstUserMsgId;
+        const isFirstInGroup = i === 0 || messages[i - 1].role !== msg.role;
         return (
           <React.Fragment key={msg.id}>
-            <MessageBubble message={msg} onCrumple={() => onCrumple(msg.id)} />
+            <MessageBubble message={msg} onCrumple={() => onCrumple(msg.id)} showAvatar={isFirstInGroup} />
             {isFirstUserMsg && hintVisible && hint}
           </React.Fragment>
         );
@@ -120,26 +134,74 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem("gambass_session_id") : null
+  );
   const [hintShown, setHintShown] = useState(true);
   useEffect(() => {
     setHintShown(!!localStorage.getItem("gambass_hint_shown"));
   }, []);
   const [hintVisible, setHintVisible] = useState(false);
   const [inputMultiline, setInputMultiline] = useState(false);
+  const [isComposing, setIsComposing] = useState(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const desktopBottomRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLElement>(null);
   const isMounted = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const timerRefs = useRef<{ timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> }>({});
 
   useEffect(() => {
-    const refs = timerRefs.current;
+    const stored = localStorage.getItem("gambass_session_id");
+    if (stored) {
+      fetch(`${API_URL}/api/session?sessionId=${stored}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.messages) {
+            setSessionId(stored);
+            if (data.messages.length > 0) {
+              setMessages([
+                INITIAL_MESSAGE,
+                ...data.messages.flatMap((m: { role: string; content: string }) => {
+                  if (m.role === "assistant") {
+                    const { imageSrc, text } = parseEmojiTag(m.content);
+                    const sentences = splitIntoSentences(text || m.content);
+                    if (sentences.length === 0) sentences.push(text || m.content);
+                    return sentences.map((s, i) => ({
+                      id: generateId(),
+                      role: "ai" as Role,
+                      content: s,
+                      gamzaImage: i === 0 ? (imageSrc ?? undefined) : undefined,
+                    }));
+                  }
+                  return [{ id: generateId(), role: "user" as Role, content: m.content }];
+                }),
+              ]);
+            }
+          } else {
+            createNewSession();
+          }
+        })
+        .catch(() => createNewSession());
+    } else {
+      createNewSession();
+    }
+
+    function createNewSession() {
+      fetch(`${API_URL}/api/session`, { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => {
+              setSessionId(d.sessionId);
+          localStorage.setItem("gambass_session_id", d.sessionId);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
     const hintTimer = hintTimerRef.current;
     return () => {
-      clearTimeout(refs.timeout);
-      clearInterval(refs.interval);
       if (hintTimer) clearTimeout(hintTimer);
     };
   }, []);
@@ -153,10 +215,13 @@ export default function ChatPage() {
   }, [hasUserMessage, hintShown]);
 
   useEffect(() => {
-    const behavior = isMounted.current ? "smooth" : "instant";
+    const smooth = isMounted.current;
     isMounted.current = true;
-    bottomRef.current?.scrollIntoView({ behavior });
-    desktopBottomRef.current?.scrollIntoView({ behavior });
+    const container = mobileScrollRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+    }
+    desktopBottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, [messages]);
 
   useEffect(() => {
@@ -174,9 +239,92 @@ export default function ChatPage() {
     setInputMultiline(el.scrollHeight > 44);
   }, [input]);
 
-  const sendMessage = useCallback(() => {
+  const streamResponse = useCallback(async (aiId: string, message: string): Promise<void> => {
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      let fullResponse = "";
+      let shouldRetry = false;
+
+      try {
+        const res = await fetch(`${API_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, message }),
+        });
+
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
+            if (data === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.retry) {
+                shouldRetry = true;
+              } else if (parsed.chunk) {
+                fullResponse += parsed.chunk;
+                const { text } = parseEmojiTag(fullResponse);
+                const sentences = splitIntoSentences(text || fullResponse);
+                const displayText = sentences[0] ?? text ?? fullResponse;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiId ? { ...m, content: displayText, pending: false } : m
+                  )
+                );
+              }
+            } catch (e) { console.error('Failed to parse SSE data:', data, e); }
+          }
+        }
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId ? { ...m, content: "연결이 끊겼어. 다시 말해줄래?", pending: false } : m
+          )
+        );
+        return;
+      }
+
+      if (!shouldRetry) {
+        const { imageSrc, text: cleanText } = parseEmojiTag(fullResponse);
+        const sentences = splitIntoSentences(cleanText || fullResponse);
+        const first = sentences[0] ?? fullResponse;
+
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiId ? { ...m, content: first, pending: false, gamzaImage: imageSrc ?? undefined } : m))
+        );
+
+        for (let i = 1; i < sentences.length; i++) {
+          await new Promise((r) => setTimeout(r, 500 + Math.random() * 500));
+          const newId = generateId();
+          setMessages((prev) => [...prev, { id: newId, role: "ai", content: "", pending: true }]);
+          await new Promise((r) => setTimeout(r, 300 + Math.random() * 300));
+          setMessages((prev) =>
+            prev.map((m) => (m.id === newId ? { ...m, content: sentences[i], pending: false } : m))
+          );
+        }
+        return;
+      }
+    }
+
+    // 재시도 모두 실패
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === aiId ? { ...m, content: "아 나 지금 좀 이상한가봐. 다시 말해줄래?", pending: false } : m
+      )
+    );
+  }, [sessionId]);
+
+  const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed || isStreaming || !sessionId) return;
 
     const userMsg: Message = { id: generateId(), role: "user", content: trimmed };
     const aiId = generateId();
@@ -186,24 +334,12 @@ export default function ChatPage() {
     setInput("");
     setIsStreaming(true);
 
-    const response = MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
-
-    timerRefs.current.timeout = setTimeout(() => {
-      let i = 0;
-      timerRefs.current.interval = setInterval(() => {
-        i++;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === aiId ? { ...m, content: response.slice(0, i), pending: false } : m
-          )
-        );
-        if (i >= response.length) {
-          clearInterval(timerRefs.current.interval);
-          setIsStreaming(false);
-        }
-      }, 35);
-    }, 600);
-  }, [input, isStreaming]);
+    try {
+      await streamResponse(aiId, trimmed);
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [input, isStreaming, sessionId, streamResponse]);
 
   const crumpledCount = messages.filter((m) => m.crumpled).length;
   const firstUserMsgId = messages.find((m) => m.role === "user")?.id;
@@ -232,7 +368,7 @@ export default function ChatPage() {
   }, [hintShown]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
       sendMessage();
     }
@@ -403,8 +539,10 @@ export default function ChatPage() {
 
         {/* 메시지 영역 */}
         <section
+          ref={mobileScrollRef}
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             padding: "16px 20px",
             paddingBottom: 16,
@@ -441,6 +579,8 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
             placeholder="메세지 입력.."
             rows={1}
             style={{
@@ -462,7 +602,7 @@ export default function ChatPage() {
               boxSizing: "border-box",
             }}
           />
-          <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming} size={44} />
+          <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming || !sessionId} size={44} />
         </div>
       </main>
 
@@ -505,6 +645,7 @@ export default function ChatPage() {
         <section
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             padding: "24px 40px",
             display: "flex",
@@ -541,7 +682,7 @@ export default function ChatPage() {
           <div
             style={{
               display: "flex",
-              alignItems: "flex-end",
+              alignItems: inputMultiline ? "flex-end" : "center",
               gap: 8,
               background: "#FFFFFF",
               borderRadius: inputMultiline ? 20 : 9999,
@@ -559,6 +700,8 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
               placeholder="메세지 입력.."
               rows={1}
               style={{
@@ -577,7 +720,7 @@ export default function ChatPage() {
                 padding: "4px 0",
               }}
             />
-            <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming} size={36} />
+            <SendButton onClick={sendMessage} disabled={!input.trim() || isStreaming || !sessionId} size={36} />
           </div>
         </div>
       </motion.div>
@@ -704,9 +847,11 @@ const BOUNCE: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 function MessageBubble({
   message,
   onCrumple,
+  showAvatar = true,
 }: {
   message: Message;
   onCrumple: () => void;
+  showAvatar?: boolean;
 }) {
   const isAI = message.role === "ai";
   const filterId = useId().replace(/:/g, "");
@@ -769,7 +914,7 @@ function MessageBubble({
           paddingRight: isAI ? 0 : 8,
         }}
       >
-        {isAI && <Avatar />}
+        {isAI && (showAvatar ? <Avatar /> : <div style={{ width: 40, flexShrink: 0 }} />)}
         <Image
           src={isAI ? "/trash-paper-white.png" : "/trash-paper-black.png"}
           alt="구겨진 종이"
@@ -781,6 +926,31 @@ function MessageBubble({
     );
   }
 
+  const { imageSrc, text: displayText } = isAI
+    ? parseEmojiTag(message.content)
+    : { imageSrc: null, text: message.content };
+
+  const bubbleStyle = {
+    padding: message.pending ? "14px 18px" : "12px 16px",
+    borderRadius: bubbleRadius,
+    scale: bubbleScale,
+    skewX: bubbleSkewX,
+    skewY: bubbleSkewY,
+    filter: `url(#crumple-${filterId})`,
+    fontSize: 15,
+    lineHeight: 1.6,
+    letterSpacing: "-0.005em",
+    whiteSpace: "pre-wrap" as const,
+    wordBreak: "break-word" as const,
+    userSelect: "none" as const,
+    WebkitUserSelect: "none" as const,
+    touchAction: "pan-y" as const,
+    cursor: isAI ? "default" : "pointer",
+    ...(isAI
+      ? { background: "#FFFFFF", color: "#3A3A38", boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)" }
+      : { background: "#121211", color: "#FDFDFC" }),
+  };
+
   return (
     <motion.div
       layout
@@ -790,12 +960,12 @@ function MessageBubble({
       style={{
         display: "flex",
         flexDirection: "row",
-        alignItems: "flex-end",
+        alignItems: isAI ? "flex-start" : "flex-end",
         justifyContent: isAI ? "flex-start" : "flex-end",
         gap: 10,
       }}
     >
-      {isAI && <Avatar />}
+      {isAI && (showAvatar ? <Avatar /> : <div style={{ width: 40, flexShrink: 0 }} />)}
 
       {/* SVG 변위 필터 (구기기 텍스처) */}
       <svg width="0" height="0" style={{ position: "absolute" }}>
@@ -814,39 +984,26 @@ function MessageBubble({
         </defs>
       </svg>
 
-      <motion.div
-        {...longPressHandlers}
-        style={{
-          maxWidth: "72%",
-          padding: message.pending ? "14px 18px" : "12px 16px",
-          borderRadius: bubbleRadius,
-          scale: bubbleScale,
-          skewX: bubbleSkewX,
-          skewY: bubbleSkewY,
-          filter: `url(#crumple-${filterId})`,
-          fontSize: 15,
-          lineHeight: 1.6,
-          letterSpacing: "-0.005em",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          touchAction: "pan-y",
-          cursor: isAI ? "default" : "pointer",
-          ...(isAI
-            ? {
-                background: "#FFFFFF",
-                color: "#3A3A38",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-              }
-            : {
-                background: "#121211",
-                color: "#FDFDFC",
-              }),
-        }}
-      >
-        {message.pending ? <DotsIndicator /> : message.content}
-      </motion.div>
+      {isAI ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "72%", alignItems: "flex-start" }}>
+          {message.gamzaImage && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.1 }}
+            >
+              <Image src={message.gamzaImage} alt="감자 반응" width={80} height={80} style={{ objectFit: "contain" }} />
+            </motion.div>
+          )}
+          <motion.div {...longPressHandlers} style={bubbleStyle}>
+            {message.pending ? <DotsIndicator /> : displayText}
+          </motion.div>
+        </div>
+      ) : (
+        <motion.div {...longPressHandlers} style={{ maxWidth: "72%", ...bubbleStyle }}>
+          {displayText}
+        </motion.div>
+      )}
     </motion.div>
   );
 }
