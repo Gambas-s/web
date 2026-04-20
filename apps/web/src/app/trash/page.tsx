@@ -8,6 +8,7 @@ import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const BASE_SPEED = 1200;
 const MIN_SPEED = 150;
 const SPEED_STEP = 150;
@@ -80,6 +81,11 @@ function TrashContent() {
       if (burnedRef.current >= total) {
         clearInterval(intervalRef.current!);
         doneRef.current = true;
+        const sessionId = localStorage.getItem("gambass_session_id");
+        if (sessionId) {
+          fetch(`${API_URL}/api/session?sessionId=${sessionId}`, { method: "DELETE" }).catch(() => {});
+          localStorage.removeItem("gambass_session_id");
+        }
         timeoutRef.current = setTimeout(() => router.push("/trash-fin"), 3000);
       }
     }, speedRef.current);
