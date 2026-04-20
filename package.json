@@ -2,7 +2,7 @@
   "name": "gambass",
   "private": true,
   "scripts": {
-    "start": "pnpm --filter server start:prod",
+    "start": "pnpm --filter server start",
     "dev": "concurrently -n server,web -c blue,green \"pnpm --filter server start:dev\" \"pnpm --filter web dev\"",
     "dev:server": "pnpm --filter server start:dev",
     "dev:web": "pnpm --filter web dev",
