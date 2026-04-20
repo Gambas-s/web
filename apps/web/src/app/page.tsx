@@ -1,589 +1,292 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
-import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  animate,
-} from "framer-motion";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { MessageDock } from "@/components/ui/message-dock";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { WebLayout } from "@/components/web/WebLayout";
+import WebSidebar from "@/components/web/WebSidebar";
 
-const POST_IT_SIZE = 180;
-const INITIAL_STACK = 8;
+const INPUT_BAR_STYLES = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 10px 10px 20px",
+  borderRadius: 9999,
+  background: "#FFFFFF",
+  boxShadow: "0 0 0 1px #E2E2DF, 0 2px 8px rgba(18,18,17,0.06)",
+  boxSizing: "border-box" as const,
+};
 
-// ─── TrashCan3D ───────────────────────────────────────────────────────────────
-// Pseudo-3D cylinder viewed at ~75° elevation: oval rim + body with shading
-
-function TrashCan3D({
-  isOver,
-  trashRef,
-}: {
-  isOver: boolean;
-  trashRef: React.RefObject<HTMLDivElement | null>;
-}) {
+function InputBarContent() {
   return (
-    // Static wrapper — bounding rect used for drop detection, unaffected by scale
-    <div
-      ref={trashRef}
-      style={{ position: "relative", width: 130, height: 195, zIndex: 3 }}
-    >
-      <motion.div
-        animate={{ scale: isOver ? 1.1 : 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 22 }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          transformOrigin: "center 62%",
-        }}
-      >
-        {/* Cast shadow */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "18%",
-            right: "18%",
-            height: 18,
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.12)",
-            filter: "blur(10px)",
-            transform: "translateY(6px)",
-          }}
-        />
-
-        {/* Cylinder body — horizontal gradient gives cylindrical sheen */}
-        <div
-          style={{
-            position: "absolute",
-            top: 26,
-            left: 0,
-            right: 0,
-            bottom: 14,
-            borderRadius: "5px 5px 52% 52% / 5px 5px 14px 14px",
-            background: isOver
-              ? "linear-gradient(to right, #991B1B 0%, #EF4444 33%, #FCA5A5 50%, #EF4444 67%, #991B1B 100%)"
-              : "linear-gradient(to right, #27272A 0%, #71717A 33%, #D1D5DB 50%, #71717A 67%, #27272A 100%)",
-            overflow: "hidden",
-            transition: "background 0.25s",
-            boxShadow: isOver
-              ? "0 12px 40px rgba(239,68,68,0.3)"
-              : "0 12px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1)",
-          }}
-        >
-          {/* Vertical specular highlight */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              bottom: 0,
-              left: "44%",
-              width: "13%",
-              background: "rgba(255,255,255,0.14)",
-            }}
-          />
-          {/* Horizontal ridges */}
-          {[0.3, 0.58].map((pos, i) => (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: `${pos * 100}%`,
-                height: 4,
-                background: "rgba(0,0,0,0.15)",
-                boxShadow: "0 2px 0 rgba(255,255,255,0.06)",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Outer rim — top ellipse of the cylinder */}
-        <div
-          style={{
-            position: "absolute",
-            top: 13,
-            left: -6,
-            right: -6,
-            height: 24,
-            borderRadius: "50%",
-            background: isOver
-              ? "linear-gradient(to bottom, #FCA5A5, #DC2626)"
-              : "linear-gradient(to bottom, #D4D4D8, #52525B)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.28)",
-            zIndex: 2,
-            transition: "background 0.25s",
-          }}
-        />
-
-        {/* Opening — dark void inside the rim */}
-        <div
-          style={{
-            position: "absolute",
-            top: 15,
-            left: 3,
-            right: 3,
-            height: 20,
-            borderRadius: "50%",
-            background: isOver
-              ? "radial-gradient(ellipse at 40% 38%, #7F1D1D, #3B0A0A)"
-              : "radial-gradient(ellipse at 40% 38%, #18181B, #000)",
-            boxShadow: "inset 0 5px 18px rgba(0,0,0,0.95)",
-            zIndex: 3,
-            transition: "background 0.25s",
-          }}
-        />
-      </motion.div>
-    </div>
+    <>
+      <span style={{ flex: 1, fontSize: 15, color: "#9E9E9B", letterSpacing: "-0.005em", lineHeight: 1.6, userSelect: "none" }}>
+        메세지 입력..
+      </span>
+      <div style={{ width: 36, height: 36, borderRadius: 9999, background: "#121211", border: "none", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13V3M8 3L3 8M8 3L13 8" stroke="#FDFDFC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+    </>
   );
 }
 
-// ─── PostItSheet ──────────────────────────────────────────────────────────────
+// Desktop home content
+function WebHomeContent() {
+  const router = useRouter();
+  const [navigating, setNavigating] = useState(false);
+  const [cloneRect, setCloneRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [windowHeight, setWindowHeight] = useState(0);
+  const inputRef = useRef<HTMLDivElement>(null);
 
-function PostItSheet({
-  trashRef,
-  onDropped,
-  onDragOverChange,
-}: {
-  trashRef: React.RefObject<HTMLDivElement | null>;
-  onDropped: () => void;
-  onDragOverChange: (v: boolean) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    const onResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-  const checkOverlap = useCallback(() => {
-    const post = ref.current?.getBoundingClientRect();
-    const trash = trashRef.current?.getBoundingClientRect();
-    if (!post || !trash) return false;
-    return !(
-      post.right < trash.left ||
-      post.left > trash.right ||
-      post.bottom < trash.top ||
-      post.top > trash.bottom
-    );
-  }, [trashRef]);
-
-  const handleDrag = useCallback(() => {
-    onDragOverChange(checkOverlap());
-  }, [checkOverlap, onDragOverChange]);
-
-  const handleDragEnd = useCallback(() => {
-    setDragging(false);
-    onDragOverChange(false);
-    if (checkOverlap()) {
-      onDropped();
-    } else {
-      animate(x, 0, { type: "spring", stiffness: 300, damping: 28 });
-      animate(y, 0, { type: "spring", stiffness: 300, damping: 28 });
+  const handleStartChat = () => {
+    if (navigating) return;
+    const rect = inputRef.current?.getBoundingClientRect();
+    if (rect) {
+      setCloneRect({ top: rect.top, left: rect.left, width: rect.width });
     }
-  }, [checkOverlap, onDropped, onDragOverChange, x, y]);
+    setWindowHeight(window.innerHeight);
+    setNavigating(true);
+    setTimeout(() => router.push("/chat"), 540);
+  };
+
+  // 채팅 입력바의 최종 위치: 화면 하단 padding 24px + 입력바 높이 56px + 상단 padding 16px
+  const targetTop = windowHeight ? windowHeight - 96 : 0;
 
   return (
-    <motion.div
-      ref={ref}
-      drag
-      dragMomentum={false}
-      dragElastic={0.08}
-      style={{
-        x,
-        y,
-        position: "absolute",
-        top: 0,
-        left: 0,
-        touchAction: "none",
-        zIndex: dragging ? 20 : 8,
-        cursor: dragging ? "grabbing" : "grab",
-      }}
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.85, y: 10 }}
-      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      onDragStart={() => setDragging(true)}
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-      whileDrag={{ scale: 1.04 }}
-    >
+    <>
       <div
+        className="hidden md:flex"
         style={{
-          width: POST_IT_SIZE,
-          height: POST_IT_SIZE,
-          background: "#F4F4F2", // sunken
-          borderRadius: 4,
-          boxShadow: dragging
-            ? "0 20px 48px rgba(0,0,0,0.18)"
-            : "2px 4px 14px rgba(0,0,0,0.1), 0 1px 0 rgba(0,0,0,0.05)",
-          display: "flex",
+          width: "100%",
+          height: "100dvh",
           flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 32,
+          background: "#FDFDFC",
+          padding: "48px 40px",
+          boxSizing: "border-box",
           overflow: "hidden",
-          userSelect: "none",
-          position: "relative",
         }}
       >
-        {/* Adhesive strip */}
-        <div
-          style={{
-            height: 20,
-            background: "rgba(0,0,0,0.06)",
-            flexShrink: 0,
-          }}
-        />
-        {/* Lined content area */}
-        <div style={{ flex: 1, position: "relative", padding: "10px 14px" }}>
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
+        {/* 이미지 + 텍스트: 페이드아웃 */}
+        <motion.div
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}
+          animate={{ opacity: navigating ? 0 : 1, scale: navigating ? 0.96 : 1 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <motion.div
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Image
+              src="/gamza/with-trashcan.png"
+              alt="감자와 쓰레기통"
+              width={320}
+              height={320}
+              priority
               style={{
-                position: "absolute",
-                left: 14,
-                right: 14,
-                top: 10 + i * 26,
-                height: 1,
-                background: "rgba(0,0,0,0.09)",
+                objectFit: "contain",
+                filter: "drop-shadow(0 24px 48px rgba(18,18,17,0.14)) drop-shadow(0 8px 16px rgba(18,18,17,0.08))",
               }}
             />
-          ))}
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <p
-              style={{
-                fontSize: 13,
-                lineHeight: "26px",
-                fontWeight: 500,
-                color: "#3F3F46",
-                margin: 0,
-              }}
-            >
-              나쁜 감정은
-            </p>
-            <p
-              style={{
-                fontSize: 13,
-                lineHeight: "26px",
-                fontWeight: 500,
-                color: "#3F3F46",
-                margin: 0,
-              }}
-            >
-              쓰레기통으로
+          </motion.div>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: "#121211", letterSpacing: "-0.03em", lineHeight: 1.25, margin: 0, textAlign: "center" }}>
+              나쁜 감정은 바로 쓰레기통으로!
+            </h1>
+            <p style={{ fontSize: 15, fontWeight: 400, color: "#6E6E6B", lineHeight: 1.6, margin: 0, textAlign: "center" }}>
+              판단 없이 받아 주는 AI 쓰레기통
             </p>
           </div>
+        </motion.div>
+
+        {/* 원본 입력바: 클론 띄운 순간 투명화 (공간은 유지) */}
+        <div
+          ref={inputRef}
+          onClick={handleStartChat}
+          style={{
+            ...INPUT_BAR_STYLES,
+            width: "100%",
+            maxWidth: 480,
+            cursor: "text",
+            opacity: navigating ? 0 : 1,
+          }}
+        >
+          <InputBarContent />
         </div>
       </div>
-    </motion.div>
-  );
-}
 
-// ─── PostItStack ──────────────────────────────────────────────────────────────
-
-function PostItStack({
-  count,
-  sheetKey,
-  trashRef,
-  onDropped,
-  onDragOverChange,
-}: {
-  count: number;
-  sheetKey: number;
-  trashRef: React.RefObject<HTMLDivElement | null>;
-  onDropped: () => void;
-  onDragOverChange: (v: boolean) => void;
-}) {
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: POST_IT_SIZE,
-        height: POST_IT_SIZE + count * 2 + 12,
-      }}
-    >
-      {/* Visible layer edges — simulates notepad thickness */}
-      {[...Array(count)].map((_, i) => (
-        <div
-          key={i}
+      {/* Fixed 클론: 원본 위치에서 하단으로 슬라이드 */}
+      {navigating && cloneRect && (
+        <motion.div
+          initial={{ top: cloneRect.top }}
+          animate={{ top: targetTop }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
           style={{
-            position: "absolute",
-            top: POST_IT_SIZE + i * 2,
-            left: i * 0.3,
-            right: -i * 0.3,
-            height: 2,
-            background: i % 2 === 0 ? "#DCDCE0" : "#E8E8EA",
-            borderRadius: "0 0 1px 1px",
+            ...INPUT_BAR_STYLES,
+            position: "fixed",
+            left: cloneRect.left,
+            width: cloneRect.width,
+            zIndex: 9999,
+            pointerEvents: "none",
           }}
-        />
-      ))}
-      {/* Cardboard backing */}
-      <div
-        style={{
-          position: "absolute",
-          top: POST_IT_SIZE + count * 2,
-          left: 2,
-          right: -2,
-          height: 8,
-          background: "#C4C4C0",
-          borderRadius: "0 0 3px 3px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-        }}
-      />
-      {/* Draggable top sheet */}
-      <AnimatePresence mode="wait">
-        {count > 0 && (
-          <PostItSheet
-            key={sheetKey}
-            trashRef={trashRef}
-            onDropped={onDropped}
-            onDragOverChange={onDragOverChange}
-          />
-        )}
-      </AnimatePresence>
-    </div>
+        >
+          <InputBarContent />
+        </motion.div>
+      )}
+    </>
   );
 }
-
-// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   const router = useRouter();
-  const trashRef = useRef<HTMLDivElement>(null);
-
-  const [stackCount, setStackCount] = useState(INITIAL_STACK);
-  const [sheetKey, setSheetKey] = useState(0);
-  const [showModal, setShowModal] = useState(false);
-  const [showDock, setShowDock] = useState(false);
-  const [isDraggingOver, setIsDraggingOver] = useState(false);
-
-  const handleDropped = useCallback(() => {
-    setShowModal(true);
-  }, []);
-
-  const handleCancel = () => {
-    setShowModal(false);
-    setSheetKey((k) => k + 1); // remount sheet at origin
-  };
-
-  const handleConfirm = () => {
-    setStackCount((c) => Math.max(0, c - 1));
-    setSheetKey((k) => k + 1);
-    setShowModal(false);
-    setShowDock(true);
-    setTimeout(() => router.push("/chat"), 600);
-  };
 
   return (
-    <main
-      style={{
-        width: "100%",
-        height: "100dvh",
-        overflow: "hidden",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 48,
-        background: "#FDFDFC", // paper — design system page background
-      }}
-    >
-      {/* App title */}
-      <div style={{ textAlign: "center", pointerEvents: "none", zIndex: 1 }}>
-        <h1
+    <WebLayout sidebar={<WebSidebar activeItem="none" />}>
+      {/* Mobile: 기존 코드 그대로 */}
+      <main
+        className="flex md:hidden"
+        style={{
+          width: "100%",
+          height: "100dvh",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingTop: 52,
+          paddingBottom: 48,
+          background: "#FDFDFC",
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
+        {/* 앱 이름 */}
+        <motion.span
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
           style={{
-            fontSize: 28,
-            fontWeight: 700,
-            color: "#121211",
-            letterSpacing: "-0.025em",
-            margin: 0,
+            fontSize: 14,
+            fontWeight: 500,
+            color: "#6E6E6B",
+            letterSpacing: "-0.01em",
           }}
         >
           감바쓰
-        </h1>
-        <p
-          style={{
-            fontSize: 14,
-            color: "#6E6E6B",
-            marginTop: 6,
-            fontWeight: 400,
-          }}
+        </motion.span>
+
+        {/* 3D 쓰레기통 — 둥실둥실 float */}
+        <motion.div
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.1 }}
         >
-          나쁜 감정은 쓰레기통으로
-        </p>
-      </div>
-
-      {/* Main scene: post-it pad + trash can side by side */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 64 }}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <PostItStack
-            count={stackCount}
-            sheetKey={sheetKey}
-            trashRef={trashRef}
-            onDropped={handleDropped}
-            onDragOverChange={setIsDraggingOver}
-          />
-          <p style={{ fontSize: 12, color: "#9E9E9B", margin: 0, fontFamily: "inherit" }}>
-            드래그해서 버려
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          <TrashCan3D isOver={isDraggingOver} trashRef={trashRef} />
-          <p style={{ fontSize: 12, color: "#9E9E9B", margin: 0, fontFamily: "inherit" }}>
-            여기에 버려
-          </p>
-        </div>
-      </div>
-
-      {/* Confirm modal */}
-      <AnimatePresence>
-        {showModal && (
-          <>
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={handleCancel}
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(0,0,0,0.25)",
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
-                zIndex: 20,
-              }}
-            />
-            <motion.div
-              key="modal-layer"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              style={{
-                position: "fixed",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 21,
-                pointerEvents: "none",
-              }}
-            >
-              <motion.div
-                initial={{ scale: 0.88, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.88, y: 20 }}
-                transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                style={{
-                  pointerEvents: "all",
-                  background: "#ffffff",
-                  borderRadius: 24,
-                  boxShadow: "0 8px 48px rgba(0,0,0,0.15)",
-                  padding: "32px 28px 24px",
-                  width: "min(340px, calc(100vw - 40px))",
-                  textAlign: "center",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 600,
-                    color: "#121211",
-                    margin: "0 0 8px",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  버리시겠습니까?
-                </p>
-                <p
-                  style={{
-                    fontSize: 14,
-                    color: "#6E6E6B",
-                    lineHeight: 1.5,
-                    margin: "0 0 28px",
-                  }}
-                >
-                  감정을 쓰레기통에 버리고 시작해봐
-                </p>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={handleCancel}
-                    style={{
-                      flex: 1,
-                      padding: "13px 0",
-                      borderRadius: 9999,
-                      border: "1px solid rgba(17,17,15,0.08)",
-                      background: "#FFFFFF",
-                      fontSize: 15,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      color: "#3A3A38",
-                      fontFamily: "inherit",
-                      boxShadow: "0 1px 2px rgba(17,17,15,0.06), 0 4px 10px rgba(17,17,15,0.08)",
-                    }}
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleConfirm}
-                    style={{
-                      flex: 1,
-                      padding: "13px 0",
-                      borderRadius: 9999,
-                      border: "1px solid #000",
-                      background: "#121211",
-                      fontSize: 15,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      color: "#FDFDFC",
-                      fontFamily: "inherit",
-                      boxShadow: "0 1px 1px rgba(255,255,255,0.15) inset, 0 2px 4px rgba(17,17,15,0.15), 0 8px 20px rgba(17,17,15,0.18)",
-                    }}
-                  >
-                    버릴게요
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* MessageDock slide-up */}
-      <AnimatePresence>
-        {showDock && (
           <motion.div
-            initial={{ y: 120, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 120, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 26 }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Image
+              src="/trash-can.png"
+              alt="쓰레기통"
+              width={280}
+              height={280}
+              priority
+              style={{ objectFit: "contain" }}
+            />
+          </motion.div>
+        </motion.div>
+
+        {/* 텍스트 + 버튼 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 16,
+            width: "100%",
+            paddingInline: 32,
+            boxSizing: "border-box",
+          }}
+        >
+          <h1
             style={{
-              position: "fixed",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              zIndex: 30,
+              fontSize: 32,
+              fontWeight: 800,
+              color: "#121211",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.2,
+              margin: 0,
+              textAlign: "center",
             }}
           >
-            <MessageDock position="bottom" autoFocus />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
+            나쁜 감정은
+            <br />
+            바로 쓰레기통으로!
+          </h1>
+
+          <p
+            style={{
+              fontSize: 18,
+              fontWeight: 500,
+              color: "#3A3A38",
+              lineHeight: 1.5,
+              margin: 0,
+              textAlign: "center",
+            }}
+          >
+            판단 없이 받아 주는
+            <br />
+            AI 쓰레기통
+          </p>
+
+          <motion.button
+            onClick={() => router.push("/chat")}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              maxWidth: 360,
+              padding: "18px 0",
+              borderRadius: 9999,
+              border: "none",
+              background: "#121211",
+              color: "#FDFDFC",
+              fontSize: 17,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              letterSpacing: "-0.01em",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              boxShadow:
+                "0 1px 1px rgba(255,255,255,0.12) inset, 0 4px 16px rgba(18,18,17,0.25)",
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🗑</span>
+            버리러가기
+          </motion.button>
+        </motion.div>
+      </main>
+
+      {/* Desktop: 새 WebHomeContent */}
+      <WebHomeContent />
+    </WebLayout>
   );
 }

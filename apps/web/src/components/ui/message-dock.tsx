@@ -195,7 +195,6 @@ export function MessageDock({
         : "fixed bottom-6 left-1/2 -translate-x-1/2 z-50";
 
   const textColor = theme === "dark" ? "#F4F4F5" : "#27272A";
-  const placeholderColor = theme === "dark" ? "#71717A" : "#A1A1AA";
 
   return (
     <motion.div

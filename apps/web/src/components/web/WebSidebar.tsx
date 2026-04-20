@@ -1,0 +1,324 @@
+"use client";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { motion, useAnimation } from "framer-motion";
+
+export type SidebarActiveItem = "new" | "list" | "history" | "none";
+
+interface WebSidebarProps {
+  activeItem: SidebarActiveItem;
+  crumpledCount?: number;
+  onTrashClick?: () => void;
+  hideTrash?: boolean;
+}
+
+const MOCK_TIMER = "14 : 23 : 01";
+const MOCK_USER = { name: "나는야 주인", totalBurned: 1234, streak: 21 };
+
+function IconPlus() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3V13M3 8H13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconList() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M3 5H13M3 8H13M3 11H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 5.5V8L10 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const NAV_ITEMS = [
+  { id: "new" as SidebarActiveItem, icon: <IconPlus />, label: "새 쓰레기통", href: "/chat", disabled: false },
+  { id: "list" as SidebarActiveItem, icon: <IconList />, label: "쓰레기통", href: "/chat", disabled: false },
+  { id: "history" as SidebarActiveItem, icon: <IconClock />, label: "소각 기록", href: "/log", disabled: false },
+];
+
+export default function WebSidebar({
+  activeItem,
+  crumpledCount = 0,
+  onTrashClick,
+  hideTrash = false,
+}: WebSidebarProps) {
+  const router = useRouter();
+  const trashControls = useAnimation();
+
+  const handleTrashClick = () => {
+    trashControls.start({
+      y: [0, -14, 6, -8, 4, -3, 2, 0],
+      rotate: [0, -6, 6, -4, 4, -2, 2, 0],
+      scale: [1, 1.1, 0.94, 1.06, 0.97, 1.02, 0.99, 1],
+      transition: { duration: 0.75, ease: "easeOut" },
+    });
+    if (crumpledCount > 0 && onTrashClick) {
+      onTrashClick();
+    }
+  };
+
+  return (
+    <aside
+      style={{
+        width: 270,
+        height: "100dvh",
+        position: "sticky",
+        top: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: "#FFFFFF",
+        borderRight: "1px solid #E2E2DF",
+        padding: "32px 20px 24px",
+        flexShrink: 0,
+      }}
+    >
+      {/* Logo */}
+      <button
+        onClick={() => router.push("/")}
+        style={{
+          fontSize: 28,
+          fontWeight: 800,
+          color: "#121211",
+          letterSpacing: "-0.03em",
+          marginBottom: 28,
+          lineHeight: 1.1,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          textAlign: "left",
+          fontFamily: "inherit",
+        }}
+      >
+        감바쓰
+      </button>
+
+      {/* Nav */}
+      <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {NAV_ITEMS.map((item) => {
+          const isActive = activeItem === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => item.href && router.push(item.href)}
+              aria-current={isActive ? "page" : undefined}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 12px",
+                borderRadius: 10,
+                background: isActive ? "#F4F4F2" : "transparent",
+                border: "none",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                transition: "background 180ms cubic-bezier(0.32,0.72,0,1)",
+              }}
+            >
+              <span
+                style={{
+                  color: isActive ? "#121211" : "#6E6E6B",
+                  width: 20,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                {item.icon}
+              </span>
+              <span
+                style={{
+                  fontSize: 15,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? "#121211" : "#6E6E6B",
+                  letterSpacing: "-0.005em",
+                  lineHeight: 1.6,
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* Trash can — bottom area */}
+      <div
+        style={{
+          display: hideTrash ? "none" : "flex",
+          justifyContent: "center",
+          marginBottom: 20,
+        }}
+      >
+        <motion.button
+          type="button"
+          aria-label={crumpledCount > 0 ? "쓰레기 버리기" : "쓰레기통"}
+          onClick={handleTrashClick}
+          style={{
+            position: "relative",
+            width: 110,
+            height: 110,
+            cursor: "pointer",
+            background: "none",
+            border: "none",
+            padding: 0,
+          }}
+          animate={trashControls}
+          whileHover={{ scale: 1.04 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        >
+          <motion.div style={{ width: "100%", height: "100%" }}>
+            <Image
+              src="/trash-can.png"
+              alt="쓰레기통"
+              width={110}
+              height={110}
+              style={{ objectFit: "contain", width: "100%", height: "100%" }}
+            />
+          </motion.div>
+
+          {/* Badge */}
+          {crumpledCount > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                minWidth: 22,
+                height: 22,
+                borderRadius: 9999,
+                background: "#121211",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 6px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#FDFDFC",
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {crumpledCount}
+              </span>
+            </div>
+          )}
+        </motion.button>
+      </div>
+
+      {/* Bottom section */}
+      <div
+        style={{
+          borderTop: "1px solid #E2E2DF",
+          paddingTop: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+        }}
+      >
+        {/* Timer label */}
+        <span
+          style={{
+            fontSize: 11,
+            color: "#9E9E9B",
+            letterSpacing: "0.01em",
+            lineHeight: 1.4,
+          }}
+        >
+          다음 자동 소각까지
+        </span>
+
+        {/* Timer value */}
+        <span
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: "#121211",
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.02em",
+            lineHeight: 1.3,
+            marginBottom: 12,
+          }}
+        >
+          {MOCK_TIMER}
+        </span>
+
+        {/* User profile button */}
+        <button
+          aria-label="사용자 프로필"
+          onClick={() => {}}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "#F4F4F2",
+            border: "none",
+            cursor: "pointer",
+            width: "100%",
+            textAlign: "left",
+          }}
+        >
+          <Image
+            src="/gamza_profile.png"
+            alt="프로필"
+            width={36}
+            height={36}
+            style={{
+              borderRadius: 9999,
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#121211",
+                letterSpacing: "-0.005em",
+                lineHeight: 1.4,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {MOCK_USER.name}
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#6E6E6B",
+                letterSpacing: "0em",
+                lineHeight: 1.4,
+              }}
+            >
+              소각 {MOCK_USER.totalBurned.toLocaleString()}개 · {MOCK_USER.streak}일 연속
+            </span>
+          </div>
+        </button>
+      </div>
+    </aside>
+  );
+}
