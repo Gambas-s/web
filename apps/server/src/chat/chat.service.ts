@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { Response } from 'express';
@@ -5,8 +7,7 @@ import { SessionService } from '../session/session.service';
 import { OPENAI_CLIENT } from './openai.provider';
 
 const CHUNK_REGEX = /[.!?\n。？！]/;
-const SYSTEM_PROMPT =
-  '너는 거칠고 재치있는 친구야. 반드시 2~3문장 이내로 짧게 대답해. 판단하거나 설교하지 마. 친구처럼 편하게 반말로 말해.';
+const SYSTEM_PROMPT = readFileSync(join(__dirname, 'prompts/system.txt'), 'utf-8').trim();
 
 @Injectable()
 export class ChatService {
@@ -19,22 +20,13 @@ export class ChatService {
 
   async streamChat(sessionId: string, message: string, res: Response): Promise<void> {
     try {
-      // 1. Moderation
-      const modResult = await this.openai.moderations.create({ input: message });
-      if (modResult.results[0].flagged) {
-        res.write(`data: ${JSON.stringify({ chunk: '헉..괜춘?' })}\n\n`);
-        res.write('data: [DONE]\n\n');
-        res.end();
-        return;
-      }
-
-      // 2. Load history
+      // 1. Load history
       const session = await this.sessionService.getData(sessionId);
       const history = session?.messages ?? [];
 
       // 3. Stream from OpenAI
       const stream = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         max_tokens: 150,
         stream: true,
         messages: [

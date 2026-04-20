@@ -18,6 +18,12 @@ export class SessionController {
     return { sessionId };
   }
 
+  @Get()
+  async get(@Query('sessionId') sessionId: string) {
+    if (!sessionId) return null;
+    return this.sessionService.getData(sessionId);
+  }
+
   @Get('check')
   async check(@Query('sessionId') sessionId: string) {
     if (!sessionId) return { valid: false };
@@ -37,7 +43,7 @@ export class SessionController {
           .map((m) => `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`)
           .join('\n');
         const summary = await this.openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: 'llama-3.3-70b-versatile',
           max_tokens: 60,
           messages: [
             { role: 'user', content: `다음 대화를 한 문장으로 요약해줘:\n${history}` },
