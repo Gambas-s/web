@@ -18,21 +18,21 @@ export class ChatService {
   ) {}
 
   async streamChat(sessionId: string, message: string, res: Response): Promise<void> {
-    // 1. Moderation
-    const modResult = await this.openai.moderations.create({ input: message });
-    if (modResult.results[0].flagged) {
-      res.write(`data: ${JSON.stringify({ chunk: '헉..괜춘?' })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      res.end();
-      return;
-    }
-
-    // 2. Load history
-    const session = await this.sessionService.getData(sessionId);
-    const history = session?.messages ?? [];
-
-    // 3. Stream from OpenAI
     try {
+      // 1. Moderation
+      const modResult = await this.openai.moderations.create({ input: message });
+      if (modResult.results[0].flagged) {
+        res.write(`data: ${JSON.stringify({ chunk: '헉..괜춘?' })}\n\n`);
+        res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+
+      // 2. Load history
+      const session = await this.sessionService.getData(sessionId);
+      const history = session?.messages ?? [];
+
+      // 3. Stream from OpenAI
       const stream = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         max_tokens: 150,
@@ -79,11 +79,15 @@ export class ChatService {
         timestamp: now,
       });
     } catch (e) {
-      this.logger.error('OpenAI stream error', e);
-      res.write(`data: ${JSON.stringify({ chunk: '아 쏘리 나 잠깐 딴 생각함. 다시 말해줄래?' })}\n\n`);
+      this.logger.error('streamChat error', e);
+      if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify({ chunk: '아 쏘리 나 잠깐 딴 생각함. 다시 말해줄래?' })}\n\n`);
+      }
     }
 
-    res.write('data: [DONE]\n\n');
-    res.end();
+    if (!res.writableEnded) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   }
 }

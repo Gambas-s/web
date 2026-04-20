@@ -73,6 +73,7 @@ describe('ChatService', () => {
       const allWrites = res._writes.join('');
       expect(allWrites).toContain('야 그거 진짜 힘들었겠다.');
       expect(allWrites).toContain('[DONE]');
+      expect(allWrites).toContain('근데 솔직히');
       expect(mockSessionService.appendMessage).toHaveBeenCalledTimes(2);
     });
 
