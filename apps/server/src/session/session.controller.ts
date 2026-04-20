@@ -1,10 +1,12 @@
-import { Controller, Post, Get, Delete, Query, Inject } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Query, Inject, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
 import { SessionService } from './session.service';
 import { OPENAI_CLIENT } from '../chat/openai.provider';
 
 @Controller('session')
 export class SessionController {
+  private readonly logger = new Logger(SessionController.name);
+
   constructor(
     private readonly sessionService: SessionService,
     @Inject(OPENAI_CLIENT) private readonly openai: OpenAI,
@@ -18,6 +20,7 @@ export class SessionController {
 
   @Get('check')
   async check(@Query('sessionId') sessionId: string) {
+    if (!sessionId) return { valid: false };
     const valid = await this.sessionService.validate(sessionId);
     return { valid };
   }
@@ -39,9 +42,9 @@ export class SessionController {
             { role: 'user', content: `다음 대화를 한 문장으로 요약해줘:\n${history}` },
           ],
         });
-        console.log(`[소각 요약] session:${sessionId} — ${summary.choices[0].message.content}`);
+        this.logger.log(`[소각 요약] session:${sessionId} — ${summary.choices[0].message.content}`);
       } catch (e) {
-        console.error(`[소각 요약 실패] session:${sessionId}`, e);
+        this.logger.error(`[소각 요약 실패] session:${sessionId}`, e);
       }
     }
 
