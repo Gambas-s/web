@@ -27,6 +27,7 @@ export class SessionController {
 
   @Delete()
   async remove(@Query('sessionId') sessionId: string) {
+    if (!sessionId) return { success: false };
     const data = await this.sessionService.delete(sessionId);
     if (!data) return { success: false };
 
