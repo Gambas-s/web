@@ -145,6 +145,7 @@ export default function ChatPage() {
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const desktopBottomRef = useRef<HTMLDivElement>(null);
+  const mobileScrollRef = useRef<HTMLElement>(null);
   const isMounted = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const desktopTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -212,10 +213,13 @@ export default function ChatPage() {
   }, [hasUserMessage, hintShown]);
 
   useEffect(() => {
-    const behavior = isMounted.current ? "smooth" : "instant";
+    const smooth = isMounted.current;
     isMounted.current = true;
-    bottomRef.current?.scrollIntoView({ behavior });
-    desktopBottomRef.current?.scrollIntoView({ behavior });
+    const container = mobileScrollRef.current;
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+    }
+    desktopBottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "instant" });
   }, [messages]);
 
   useEffect(() => {
@@ -233,6 +237,89 @@ export default function ChatPage() {
     setInputMultiline(el.scrollHeight > 44);
   }, [input]);
 
+  const streamResponse = useCallback(async (aiId: string, message: string): Promise<void> => {
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      let fullResponse = "";
+      let shouldRetry = false;
+
+      try {
+        const res = await fetch(`${API_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, message }),
+        });
+
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
+            if (data === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.retry) {
+                shouldRetry = true;
+              } else if (parsed.chunk) {
+                fullResponse += parsed.chunk;
+                const { text } = parseEmojiTag(fullResponse);
+                const sentences = splitIntoSentences(text || fullResponse);
+                const displayText = sentences[0] ?? text ?? fullResponse;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiId ? { ...m, content: displayText, pending: false } : m
+                  )
+                );
+              }
+            } catch { /* ignore parse errors */ }
+          }
+        }
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiId ? { ...m, content: "연결이 끊겼어. 다시 말해줄래?", pending: false } : m
+          )
+        );
+        return;
+      }
+
+      if (!shouldRetry) {
+        const { imageSrc, text: cleanText } = parseEmojiTag(fullResponse);
+        const sentences = splitIntoSentences(cleanText || fullResponse);
+        const first = sentences[0] ?? fullResponse;
+
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiId ? { ...m, content: first, pending: false, gamzaImage: imageSrc ?? undefined } : m))
+        );
+
+        for (let i = 1; i < sentences.length; i++) {
+          await new Promise((r) => setTimeout(r, 500 + Math.random() * 500));
+          const newId = generateId();
+          setMessages((prev) => [...prev, { id: newId, role: "ai", content: "", pending: true }]);
+          await new Promise((r) => setTimeout(r, 300 + Math.random() * 300));
+          setMessages((prev) =>
+            prev.map((m) => (m.id === newId ? { ...m, content: sentences[i], pending: false } : m))
+          );
+        }
+        return;
+      }
+    }
+
+    // 재시도 모두 실패
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === aiId ? { ...m, content: "아 나 지금 좀 이상한가봐. 다시 말해줄래?", pending: false } : m
+      )
+    );
+  }, [sessionId]);
+
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || isStreaming || !sessionId) return;
@@ -245,63 +332,12 @@ export default function ChatPage() {
     setInput("");
     setIsStreaming(true);
 
-    let fullResponse = "";
-
     try {
-      const res = await fetch(`${API_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: trimmed }),
-      });
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
-          if (data === "[DONE]") break;
-          try {
-            const { chunk } = JSON.parse(data);
-            fullResponse += chunk;
-          } catch { /* ignore parse errors */ }
-        }
-      }
-
-      const { imageSrc, text: cleanText } = parseEmojiTag(fullResponse);
-      const sentences = splitIntoSentences(cleanText || fullResponse);
-      const first = sentences[0] ?? fullResponse;
-
-      setMessages((prev) =>
-        prev.map((m) => (m.id === aiId ? { ...m, content: first, pending: false, gamzaImage: imageSrc ?? undefined } : m))
-      );
-
-      for (let i = 1; i < sentences.length; i++) {
-        await new Promise((r) => setTimeout(r, 500 + Math.random() * 500));
-        const newId = generateId();
-        setMessages((prev) => [...prev, { id: newId, role: "ai", content: "", pending: true }]);
-        await new Promise((r) => setTimeout(r, 300 + Math.random() * 300));
-        setMessages((prev) =>
-          prev.map((m) => (m.id === newId ? { ...m, content: sentences[i], pending: false } : m))
-        );
-      }
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === aiId ? { ...m, content: "연결이 끊겼어. 다시 말해줄래?", pending: false } : m
-        )
-      );
+      await streamResponse(aiId, trimmed);
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isStreaming, sessionId]);
+  }, [input, isStreaming, sessionId, streamResponse]);
 
   const crumpledCount = messages.filter((m) => m.crumpled).length;
   const firstUserMsgId = messages.find((m) => m.role === "user")?.id;
@@ -501,8 +537,10 @@ export default function ChatPage() {
 
         {/* 메시지 영역 */}
         <section
+          ref={mobileScrollRef}
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             padding: "16px 20px",
             paddingBottom: 16,
@@ -605,6 +643,7 @@ export default function ChatPage() {
         <section
           style={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             padding: "24px 40px",
             display: "flex",

@@ -43,7 +43,7 @@ export class SessionController {
           .map((m) => `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`)
           .join('\n');
         const summary = await this.openai.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
           max_tokens: 60,
           messages: [
             { role: 'user', content: `다음 대화를 한 문장으로 요약해줘:\n${history}` },
