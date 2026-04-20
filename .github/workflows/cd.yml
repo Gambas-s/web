@@ -23,4 +23,4 @@ jobs:
 
       - name: Deploy to Railway
         # --ci 플래그로 비대화형(Non-interactive) 모드 강제 실행
-        run: railway up --service server --ci
+        run: railway up --service web --ci
