@@ -21,4 +21,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy to Railway
-        run: railway up --service server --ci
+        run: railway up --project $RAILWAY_PROJECT_ID --service server --ci
