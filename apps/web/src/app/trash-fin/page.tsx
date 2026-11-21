@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
+import { useTotalBurned } from "@/lib/burnStats";
 
-const MOCK_STATS = { totalBurned: 320, streak: 21, avgPerDay: 12.3 };
+const MOCK_STATS = { streak: 21, avgPerDay: 12.3 };
 
 export default function TrashFinPage() {
   const router = useRouter();
   const [countdown, setCountdown] = useState(5);
+  const totalBurned = useTotalBurned();
 
   useEffect(() => {
     if (countdown <= 0) {
@@ -78,7 +80,7 @@ export default function TrashFinPage() {
         >
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
             {[
-              { label: "누적 쓰레기 수", value: MOCK_STATS.totalBurned.toLocaleString(), unit: "개" },
+              { label: "누적 쓰레기 수", value: totalBurned.toLocaleString(), unit: "개" },
               { label: "스트릭", value: MOCK_STATS.streak, unit: "일" },
               { label: "평균", value: MOCK_STATS.avgPerDay, unit: "개/일" },
             ].map((stat, i) => (
@@ -216,7 +218,7 @@ export default function TrashFinPage() {
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
           {[
-            { label: "누적 쓰레기 수", value: MOCK_STATS.totalBurned.toLocaleString(), unit: "개" },
+            { label: "누적 쓰레기 수", value: totalBurned.toLocaleString(), unit: "개" },
             { label: "스트릭", value: MOCK_STATS.streak, unit: "일" },
             { label: "평균", value: MOCK_STATS.avgPerDay, unit: "개/일" },
           ].map((stat, i) => (

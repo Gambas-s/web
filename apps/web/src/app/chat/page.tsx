@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate, useAnimation } from "framer-motion";
 import React, { useState, useRef, useEffect, useCallback, useId } from "react";
 import { useLongPress } from "@/hooks/useLongPress";
+import { createBurnAttempt, type BurnSelection } from "@/lib/burnAttempt";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
 
@@ -75,9 +76,15 @@ function MessageList({
       {messages.map((msg, i) => {
         const isFirstUserMsg = msg.id === firstUserMsgId;
         const isFirstInGroup = i === 0 || messages[i - 1].role !== msg.role;
+        const authorOrder = messages.slice(0, i + 1).filter((message) => message.role === msg.role).length;
         return (
           <React.Fragment key={msg.id}>
-            <MessageBubble message={msg} onCrumple={() => onCrumple(msg.id)} showAvatar={isFirstInGroup} />
+            <MessageBubble
+              message={msg}
+              authorOrder={authorOrder}
+              onCrumple={() => onCrumple(msg.id)}
+              showAvatar={isFirstInGroup}
+            />
             {isFirstUserMsg && hintVisible && hint}
           </React.Fragment>
         );
@@ -367,6 +374,24 @@ export default function ChatPage() {
     }
   }, [hintShown]);
 
+  const startBurn = useCallback(() => {
+    if (!sessionId) return;
+
+    const selectedMessages = messages.reduce<BurnSelection[]>((selected, message, index) => {
+      if (!message.crumpled) return selected;
+      selected.push({
+        messageId: message.id,
+        author: message.role,
+        order: messages.slice(0, index + 1).filter((item) => item.role === message.role).length,
+      });
+      return selected;
+    }, []);
+    if (selectedMessages.length === 0) return;
+
+    const attempt = createBurnAttempt(sessionId, selectedMessages);
+    router.push(`/trash?burnAttemptId=${encodeURIComponent(attempt.id)}`);
+  }, [messages, router, sessionId]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
@@ -539,6 +564,7 @@ export default function ChatPage() {
 
         {/* 메시지 영역 */}
         <section
+          data-layout="mobile"
           ref={mobileScrollRef}
           style={{
             flex: 1,
@@ -643,6 +669,7 @@ export default function ChatPage() {
 
         {/* 데스크톱 메시지 영역 */}
         <section
+          data-layout="desktop"
           style={{
             flex: 1,
             minHeight: 0,
@@ -757,7 +784,7 @@ export default function ChatPage() {
               }}
             >
               <ModalContent
-                onConfirm={() => router.push(`/trash?count=${crumpledCount}`)}
+                onConfirm={startBurn}
                 onCancel={() => setShowTrashModal(false)}
               />
             </motion.div>
@@ -788,7 +815,7 @@ export default function ChatPage() {
               }}
             >
               <ModalContent
-                onConfirm={() => router.push(`/trash?count=${crumpledCount}`)}
+                onConfirm={startBurn}
                 onCancel={() => setShowTrashModal(false)}
               />
             </motion.div>
@@ -846,10 +873,12 @@ const BOUNCE: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
 
 function MessageBubble({
   message,
+  authorOrder,
   onCrumple,
   showAvatar = true,
 }: {
   message: Message;
+  authorOrder: number;
   onCrumple: () => void;
   showAvatar?: boolean;
 }) {
@@ -884,6 +913,19 @@ function MessageBubble({
     onCrumple();
   }, [pressProgress, onCrumple]);
 
+  const handleKeyboardCrumple = useCallback((event: React.KeyboardEvent) => {
+    if (message.crumpled || message.pending) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    void handleLongPress();
+  }, [handleLongPress, message.crumpled, message.pending]);
+
+  const automationAttributes = {
+    "data-message-author": message.role,
+    "data-message-order": authorOrder,
+    "data-message-id": message.id,
+  };
+
   const { isPressing, ...longPressHandlers } = useLongPress({
     onLongPress: handleLongPress,
     duration: 500,
@@ -906,6 +948,8 @@ function MessageBubble({
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ duration: 0.45, ease: BOUNCE }}
         data-testid="crumpled-ball"
+        {...automationAttributes}
+        aria-label={`${message.role === "ai" ? "감자" : "사용자"} 메시지 ${authorOrder} 구김 완료`}
         style={{
           display: "flex",
           alignItems: "flex-end",
@@ -945,7 +989,7 @@ function MessageBubble({
     userSelect: "none" as const,
     WebkitUserSelect: "none" as const,
     touchAction: "pan-y" as const,
-    cursor: isAI ? "default" : "pointer",
+    cursor: "pointer",
     ...(isAI
       ? { background: "#FFFFFF", color: "#3A3A38", boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)" }
       : { background: "#121211", color: "#FDFDFC" }),
@@ -995,12 +1039,29 @@ function MessageBubble({
               <Image src={message.gamzaImage} alt="감자 반응" width={80} height={80} style={{ objectFit: "contain" }} />
             </motion.div>
           )}
-          <motion.div {...longPressHandlers} style={bubbleStyle}>
+          <motion.div
+            {...longPressHandlers}
+            {...automationAttributes}
+            role="button"
+            tabIndex={message.pending ? -1 : 0}
+            aria-disabled={message.pending || undefined}
+            aria-label={`감자 메시지 ${authorOrder} 구기기`}
+            onKeyDown={handleKeyboardCrumple}
+            style={bubbleStyle}
+          >
             {message.pending ? <DotsIndicator /> : displayText}
           </motion.div>
         </div>
       ) : (
-        <motion.div {...longPressHandlers} style={{ maxWidth: "72%", ...bubbleStyle }}>
+        <motion.div
+          {...longPressHandlers}
+          {...automationAttributes}
+          role="button"
+          tabIndex={0}
+          aria-label={`사용자 메시지 ${authorOrder} 구기기`}
+          onKeyDown={handleKeyboardCrumple}
+          style={{ maxWidth: "72%", ...bubbleStyle }}
+        >
           {displayText}
         </motion.div>
       )}

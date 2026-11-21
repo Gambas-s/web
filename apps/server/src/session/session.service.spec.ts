@@ -7,6 +7,7 @@ const mockRedis = {
   get: jest.fn(),
   exists: jest.fn(),
   del: jest.fn(),
+  eval: jest.fn(),
 };
 
 describe('SessionService', () => {
@@ -80,19 +81,50 @@ describe('SessionService', () => {
   });
 
   describe('delete', () => {
-    it('세션 데이터를 반환하고 Redis 키를 삭제한다', async () => {
+    it('세션 삭제와 완료 기록을 원자적으로 처리하고 삭제 데이터를 반환한다', async () => {
       const data = { createdAt: 1000, messages: [{ role: 'user', content: '스트레스', timestamp: 1 }] };
-      mockRedis.get.mockResolvedValue(JSON.stringify(data));
-      mockRedis.del.mockResolvedValue(1);
+      mockRedis.eval.mockResolvedValue(['deleted', JSON.stringify(data)]);
 
-      const result = await service.delete('test-id');
-      expect(result).toEqual(data);
-      expect(mockRedis.del).toHaveBeenCalledWith('session:test-id');
+      const result = await service.delete('test-id', 'attempt-1');
+
+      expect(result).toEqual({ status: 'deleted', data });
+      expect(mockRedis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("redis.call('DEL', KEYS[1])"),
+        2,
+        'session:test-id',
+        'session-delete-attempt:attempt-1',
+        'test-id',
+      );
+      const completionRecordArguments = mockRedis.eval.mock.calls[0].slice(3);
+      expect(JSON.stringify(completionRecordArguments)).not.toContain('스트레스');
     });
 
-    it('세션이 없으면 null을 반환한다', async () => {
-      mockRedis.get.mockResolvedValue(null);
-      expect(await service.delete('missing-id')).toBeNull();
+    it('삭제 전에 Redis 처리가 실패하면 실패를 전달한다', async () => {
+      mockRedis.eval.mockRejectedValue(new Error('redis unavailable'));
+
+      await expect(service.delete('test-id', 'attempt-1')).rejects.toThrow('redis unavailable');
+      expect(mockRedis.set).not.toHaveBeenCalled();
+      expect(mockRedis.del).not.toHaveBeenCalled();
     });
+
+    it('삭제 성공 응답 유실 후 같은 시도 식별자의 재요청은 already_deleted로 복구한다', async () => {
+      mockRedis.eval.mockResolvedValue(['already_deleted']);
+
+      expect(await service.delete('test-id', 'attempt-1')).toEqual({ status: 'already_deleted' });
+      expect(mockRedis.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        2,
+        'session:test-id',
+        'session-delete-attempt:attempt-1',
+        'test-id',
+      );
+    });
+
+    it('세션과 완료 기록이 모두 없으면 not_found를 반환한다', async () => {
+      mockRedis.eval.mockResolvedValue(['not_found']);
+
+      expect(await service.delete('missing-id', 'attempt-1')).toEqual({ status: 'not_found' });
+    });
+
   });
 });

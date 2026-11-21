@@ -7,11 +7,19 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { WebLayout } from "@/components/web/WebLayout";
 import WebSidebar from "@/components/web/WebSidebar";
+import {
+  clearBurnAttempt,
+  readBurnAttempt,
+  type BurnAttempt,
+} from "@/lib/burnAttempt";
+import { recordBurnCompletion } from "@/lib/burnStats";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const BASE_SPEED = 1200;
 const MIN_SPEED = 150;
 const SPEED_STEP = 150;
+
+type DeleteState = "idle" | "deleting" | "failed" | "completed";
 
 function TrashCan({ size, onClick, controls }: { size: number; onClick: () => void; controls: ReturnType<typeof useAnimation> }) {
   return (
@@ -59,21 +67,100 @@ function HintText({ tapped }: { tapped: boolean }) {
   );
 }
 
+function BurnStatus({
+  deleteState,
+  tapped,
+  onRetry,
+}: {
+  deleteState: DeleteState;
+  tapped: boolean;
+  onRetry: () => void;
+}) {
+  if (deleteState === "failed") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <p role="alert" style={{ fontSize: 13, color: "#A33A2B", margin: 0, textAlign: "center" }}>
+          소각을 마치지 못했어요. 다시 시도해 주세요.
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          data-testid="retry-burn"
+          style={{ border: 0, borderRadius: 9999, padding: "10px 18px", background: "#121211", color: "#FDFDFC", cursor: "pointer" }}
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+  if (deleteState === "deleting") {
+    return <p style={{ fontSize: 13, color: "#6E6E6B", margin: 0, textAlign: "center" }}>대화를 안전하게 지우는 중이에요</p>;
+  }
+  if (deleteState === "completed") {
+    return <p style={{ fontSize: 13, color: "#6E6E6B", margin: 0, textAlign: "center" }}>소각이 끝났어요</p>;
+  }
+  return <HintText tapped={tapped} />;
+}
+
 function TrashContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const total = Math.max(1, parseInt(searchParams.get("count") ?? "1", 10) || 1);
+  const burnAttemptId = searchParams.get("burnAttemptId");
+  const [attempt, setAttempt] = useState<BurnAttempt | null>(null);
+  const [attemptLoaded, setAttemptLoaded] = useState(false);
   const [burned, setBurned] = useState(0);
   const [tapped, setTapped] = useState(false);
+  const [deleteState, setDeleteState] = useState<DeleteState>("idle");
+  const total = attempt?.selectedMessages.length ?? 0;
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const burnedRef = useRef(0);
   const speedRef = useRef(BASE_SPEED);
   const doneRef = useRef(false);
+  const deleteInFlightRef = useRef(false);
   const trashControls = useAnimation();
 
+  useEffect(() => {
+    const storedAttempt = readBurnAttempt(burnAttemptId);
+    const storedSessionId = localStorage.getItem("gambass_session_id");
+    if (storedAttempt?.sessionId === storedSessionId) setAttempt(storedAttempt);
+    setAttemptLoaded(true);
+  }, [burnAttemptId]);
+
+  const deleteSession = useCallback(async () => {
+    if (!attempt || deleteInFlightRef.current) return;
+    deleteInFlightRef.current = true;
+    setDeleteState("deleting");
+
+    try {
+      const query = new URLSearchParams({
+        sessionId: attempt.sessionId,
+        burnAttemptId: attempt.id,
+      });
+      const response = await fetch(`${API_URL}/api/session?${query}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("delete request failed");
+      const result = await response.json() as { success?: boolean; status?: string };
+      if (!result.success || (result.status !== "deleted" && result.status !== "already_deleted")) {
+        throw new Error("delete was not completed");
+      }
+
+      recordBurnCompletion(attempt.id, attempt.selectedMessages.length);
+      if (localStorage.getItem("gambass_session_id") === attempt.sessionId) {
+        localStorage.removeItem("gambass_session_id");
+      }
+      clearBurnAttempt(attempt.id);
+      setDeleteState("completed");
+      timeoutRef.current = setTimeout(() => router.push("/trash-fin"), 3000);
+    } catch {
+      setDeleteState("failed");
+    } finally {
+      deleteInFlightRef.current = false;
+    }
+  }, [attempt, router]);
+
   const startInterval = useCallback(() => {
+    if (!attempt || total === 0) return;
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       burnedRef.current += 1;
@@ -81,23 +168,19 @@ function TrashContent() {
       if (burnedRef.current >= total) {
         clearInterval(intervalRef.current!);
         doneRef.current = true;
-        const sessionId = localStorage.getItem("gambass_session_id");
-        if (sessionId) {
-          fetch(`${API_URL}/api/session?sessionId=${sessionId}`, { method: "DELETE" }).catch(() => {});
-          localStorage.removeItem("gambass_session_id");
-        }
-        timeoutRef.current = setTimeout(() => router.push("/trash-fin"), 3000);
+        void deleteSession();
       }
     }, speedRef.current);
-  }, [total, router]);
+  }, [attempt, deleteSession, total]);
 
   useEffect(() => {
+    if (!attempt) return;
     startInterval();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [startInterval]);
+  }, [attempt, startInterval]);
 
   const handleTap = useCallback(() => {
     if (doneRef.current) return;
@@ -110,6 +193,25 @@ function TrashContent() {
       transition: { duration: 0.4, ease: "easeOut" },
     });
   }, [startInterval, trashControls]);
+
+  const handleRetry = useCallback(() => {
+    void deleteSession();
+  }, [deleteSession]);
+
+  if (!attemptLoaded) {
+    return <div style={{ width: "100%", height: "100dvh", background: "#FDFDFC" }} />;
+  }
+
+  if (!attempt) {
+    return (
+      <WebLayout sidebar={<WebSidebar activeItem="list" hideTrash />}>
+        <main style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "#FDFDFC" }}>
+          <p role="alert" style={{ margin: 0, color: "#121211", fontWeight: 600 }}>선택한 메시지를 확인할 수 없어요.</p>
+          <button type="button" onClick={() => router.push("/chat")}>채팅으로 돌아가기</button>
+        </main>
+      </WebLayout>
+    );
+  }
 
   const progress = Math.min(burned / total, 1);
 
@@ -172,7 +274,7 @@ function TrashContent() {
             <p style={{ fontSize: 16, fontWeight: 600, color: "#121211", letterSpacing: "-0.02em", margin: 0, textAlign: "center" }}>
               {burned} / {total} 소각됨
             </p>
-            <HintText tapped={tapped} />
+            <BurnStatus deleteState={deleteState} tapped={tapped} onRetry={handleRetry} />
           </div>
         </div>
       </main>
@@ -199,7 +301,7 @@ function TrashContent() {
           <p style={{ fontSize: 16, fontWeight: 600, color: "#121211", letterSpacing: "-0.02em", margin: 0, textAlign: "center" }}>
             {burned} / {total} 소각됨
           </p>
-          <HintText tapped={tapped} />
+          <BurnStatus deleteState={deleteState} tapped={tapped} onRetry={handleRetry} />
         </div>
       </div>
     </WebLayout>

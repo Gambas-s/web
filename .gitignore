@@ -52,3 +52,10 @@ coverage/
 
 # Memo
 docs/memo
+
+# Workflow raw execution records
+/docs/[0-9][0-9][0-9]*-*/raw/
+
+# Reviewed QA reports and their evidence are repository artifacts.
+!/docs/001-소각-집계와-기능-점검/03-qa/
+!/docs/001-소각-집계와-기능-점검/03-qa/**

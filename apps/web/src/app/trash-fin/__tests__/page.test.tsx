@@ -9,11 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/web/WebLayout", () => ({
-  WebLayout: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("@/components/web/WebSidebar", () => ({
-  default: () => null,
+  WebLayout: ({ children, sidebar }: { children: React.ReactNode; sidebar: React.ReactNode }) => <>{sidebar}{children}</>,
 }));
 
 vi.mock("next/image", () => ({
@@ -39,6 +35,7 @@ vi.mock("framer-motion", () => ({
 beforeEach(() => {
   vi.useFakeTimers();
   mockPush.mockClear();
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -56,6 +53,47 @@ test("'깨끗해졌어요!!' 텍스트가 표시된다", () => {
 test("빈 쓰레기통 이미지가 표시된다", () => {
   render(<TrashFinPage />);
   expect(screen.getAllByAltText("빈 쓰레기통")[0]).toBeDefined();
+});
+
+test("저장된 누적 소각 수를 모바일과 데스크톱 완료 화면에 동일하게 표시한다", () => {
+  localStorage.setItem("gambass_burn_stats", JSON.stringify({
+    totalBurned: 7,
+    appliedAttemptIds: ["attempt-1"],
+  }));
+  render(<TrashFinPage />);
+
+  const totalStats = screen.getAllByText("누적 쓰레기 수").map((label) => label.parentElement?.textContent);
+  expect(totalStats).toEqual(["누적 쓰레기 수7개", "누적 쓰레기 수7개"]);
+});
+
+test("사이트 저장 데이터가 없으면 완료 화면 누적값을 0으로 표시한다", () => {
+  render(<TrashFinPage />);
+  const totalStats = screen.getAllByText("누적 쓰레기 수").map((label) => label.parentElement?.textContent);
+  expect(totalStats).toEqual(["누적 쓰레기 수0개", "누적 쓰레기 수0개"]);
+});
+
+test("누적값 3 표시 후 사이트 데이터를 삭제하고 다시 열면 사이드바와 완료 화면이 모두 0이 된다", () => {
+  localStorage.setItem("gambass_burn_stats", JSON.stringify({
+    totalBurned: 3,
+    appliedAttemptIds: ["attempt-1"],
+  }));
+  render(<TrashFinPage />);
+
+  expect(screen.getByText(/소각 3개/)).toBeDefined();
+  expect(screen.getAllByText("누적 쓰레기 수").map((label) => label.parentElement?.textContent)).toEqual([
+    "누적 쓰레기 수3개",
+    "누적 쓰레기 수3개",
+  ]);
+
+  cleanup();
+  localStorage.clear();
+  render(<TrashFinPage />);
+
+  expect(screen.getByText(/소각 0개/)).toBeDefined();
+  expect(screen.getAllByText("누적 쓰레기 수").map((label) => label.parentElement?.textContent)).toEqual([
+    "누적 쓰레기 수0개",
+    "누적 쓰레기 수0개",
+  ]);
 });
 
 test("'한번 더' 버튼 클릭 시 /chat으로 이동한다", () => {

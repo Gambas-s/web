@@ -6,6 +6,7 @@ import { render, screen, cleanup, act, fireEvent } from "@testing-library/react"
 vi.spyOn(Math, "random").mockReturnValue(0);
 
 const mockPush = vi.fn();
+let holdSecondReply = false;
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -71,9 +72,21 @@ beforeAll(() => {
       }));
     }
     if (urlStr.includes("/api/chat")) {
+      const body = JSON.parse(String(options?.body)) as { message: string };
+      if (holdSecondReply && body.message === "두 번째 사용자 메시지") {
+        return new Promise<Response>(() => {});
+      }
+      const responseText = body.message === "첫 번째 사용자 메시지"
+        ? "첫 번째 감자 답장"
+        : body.message === "두 번째 사용자 메시지"
+          ? "두 번째 감자 답장"
+          : null;
+      const responseSse = responseText
+        ? `data: ${JSON.stringify({ chunk: responseText })}\ndata: [DONE]\n`
+        : MOCK_SSE;
       const stream = new ReadableStream({
         start(controller) {
-          controller.enqueue(new TextEncoder().encode(MOCK_SSE));
+          controller.enqueue(new TextEncoder().encode(responseSse));
           controller.close();
         },
       });
@@ -86,6 +99,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.useFakeTimers();
   mockPush.mockClear();
+  holdSecondReply = false;
   localStorage.setItem("gambass_session_id", "test-session");
 });
 
@@ -320,18 +334,92 @@ test("모달에서 '아직 남았어요' 클릭 시 모달이 닫히고 이동�
   expect(mockPush).not.toHaveBeenCalled();
 });
 
-test("모달에서 '다 불태울게요' 클릭 시 /trash?count=N으로 이동한다", async () => {
+test("메시지에 작성자·순번·고유 식별자가 있고 키보드로 구길 수 있다", async () => {
   render(<ChatPage />);
   typeAndSend("스트레스 받아");
 
-  const bubble = screen.getAllByText("스트레스 받아")[0];
-  fireEvent.pointerDown(bubble);
-  await act(async () => { vi.advanceTimersByTime(500); });
+  await act(async () => { await vi.runAllTimersAsync(); });
+
+  const initialReplySelector = '[data-layout="mobile"] [data-message-author="ai"][data-message-order="1"]';
+  const nextReplySelector = '[data-layout="mobile"] [data-message-author="ai"][data-message-order="2"]';
+  const userMessageSelector = '[data-layout="mobile"] [data-message-author="user"][data-message-order="1"]';
+  const initialReply = document.querySelector(initialReplySelector);
+  const nextReply = document.querySelector(nextReplySelector);
+  const userMessage = document.querySelector(userMessageSelector);
+
+  expect(document.querySelectorAll(nextReplySelector)).toHaveLength(1);
+  expect(document.querySelectorAll('[data-layout="desktop"] [data-message-author="ai"][data-message-order="2"]')).toHaveLength(1);
+  expect(initialReply?.getAttribute("data-message-id")).toBeTruthy();
+  expect(nextReply?.getAttribute("data-message-id")).toBeTruthy();
+  expect(nextReply?.getAttribute("data-message-id")).not.toBe(initialReply?.getAttribute("data-message-id"));
+  expect(userMessage).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.keyDown(nextReply!, { key: "Enter", code: "Enter" });
+    await Promise.resolve();
+  });
+
+  expect(screen.getByTestId("crumple-badge").textContent).toBe("1");
+});
+
+test.each([
+  { receiveSecondReply: false, condition: "두 번째 감자 답장 수신 전" },
+  { receiveSecondReply: true, condition: "두 번째 감자 답장 수신 후" },
+])("$condition에도 사용자 2개와 지정한 감자 답장 1개만 소각 시도에 저장한다", async ({ receiveSecondReply }) => {
+  render(<ChatPage />);
+  typeAndSend("첫 번째 사용자 메시지");
+  await act(async () => { await vi.runAllTimersAsync(); });
+  holdSecondReply = !receiveSecondReply;
+  typeAndSend("두 번째 사용자 메시지");
+
+  if (receiveSecondReply) {
+    await act(async () => { await vi.runAllTimersAsync(); });
+  } else {
+    await act(async () => { await Promise.resolve(); });
+  }
+
+  const user1 = document.querySelector('[data-layout="mobile"] [data-message-author="user"][data-message-order="1"]');
+  const user2 = document.querySelector('[data-layout="mobile"] [data-message-author="user"][data-message-order="2"]');
+  const initialReply = document.querySelector('[data-layout="mobile"] [data-message-author="ai"][data-message-order="1"]');
+  const selectedReply = document.querySelector('[data-layout="mobile"] [data-message-author="ai"][data-message-order="2"]');
+  const secondReply = document.querySelector('[data-layout="mobile"] [data-message-author="ai"][data-message-order="3"]');
+  const selectedBubbles = [user1, user2, selectedReply];
+  const selectedIds = {
+    user1: user1?.getAttribute("data-message-id"),
+    user2: user2?.getAttribute("data-message-id"),
+    ai2: selectedReply?.getAttribute("data-message-id"),
+  };
+  const excludedIds = [
+    initialReply?.getAttribute("data-message-id"),
+    secondReply?.getAttribute("data-message-id"),
+  ];
+
+  expect(selectedBubbles.every(Boolean)).toBe(true);
+  expect(Object.values(selectedIds).every(Boolean)).toBe(true);
+  expect(excludedIds.every(Boolean)).toBe(true);
+  expect(secondReply?.getAttribute("aria-disabled")).toBe(receiveSecondReply ? null : "true");
+
+  await act(async () => {
+    selectedBubbles.forEach((bubble) => fireEvent.keyDown(bubble!, { key: " ", code: "Space" }));
+    await Promise.resolve();
+  });
+
+  expect(screen.getByTestId("crumple-badge").textContent).toBe("3");
 
   fireEvent.click(screen.getByRole("button", { name: /버리러가기/ }));
   fireEvent.click(screen.getAllByTestId("trash-confirm-burn")[0]);
 
-  expect(mockPush).toHaveBeenCalledWith("/trash?count=1");
+  expect(mockPush).toHaveBeenCalledWith(expect.stringMatching(/^\/trash\?burnAttemptId=.+/));
+  const storedAttempt = JSON.parse(localStorage.getItem("gambass_burn_attempt") ?? "null");
+  expect(storedAttempt.sessionId).toBe("test-session");
+  expect(storedAttempt.selectedMessages).toEqual([
+    { messageId: selectedIds.user1, author: "user", order: 1 },
+    { messageId: selectedIds.ai2, author: "ai", order: 2 },
+    { messageId: selectedIds.user2, author: "user", order: 2 },
+  ]);
+  expect(storedAttempt.selectedMessages.map((message: { messageId: string }) => message.messageId)).not.toEqual(
+    expect.arrayContaining(excludedIds),
+  );
 });
 
 // ─── 온보딩 힌트 ─────────────────────────────────────────────

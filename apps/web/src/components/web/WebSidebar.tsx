@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation } from "framer-motion";
+import { useTotalBurned } from "@/lib/burnStats";
 
 export type SidebarActiveItem = "new" | "list" | "history" | "none";
 
@@ -14,7 +15,7 @@ interface WebSidebarProps {
 }
 
 const MOCK_TIMER = "14 : 23 : 01";
-const MOCK_USER = { name: "나는야 주인", totalBurned: 1234, streak: 21 };
+const MOCK_USER = { name: "나는야 주인", streak: 21 };
 
 function IconPlus() {
   return (
@@ -55,6 +56,7 @@ export default function WebSidebar({
 }: WebSidebarProps) {
   const router = useRouter();
   const trashControls = useAnimation();
+  const totalBurned = useTotalBurned();
 
   const handleTrashClick = () => {
     trashControls.start({
@@ -314,7 +316,7 @@ export default function WebSidebar({
                 lineHeight: 1.4,
               }}
             >
-              소각 {MOCK_USER.totalBurned.toLocaleString()}개 · {MOCK_USER.streak}일 연속
+              소각 {totalBurned.toLocaleString()}개 · {MOCK_USER.streak}일 연속
             </span>
           </div>
         </button>

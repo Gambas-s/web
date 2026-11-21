@@ -32,14 +32,22 @@ export class SessionController {
   }
 
   @Delete()
-  async remove(@Query('sessionId') sessionId: string) {
-    if (!sessionId) return { success: false };
-    const data = await this.sessionService.delete(sessionId);
-    if (!data) return { success: false };
+  async remove(
+    @Query('sessionId') sessionId: string,
+    @Query('burnAttemptId') burnAttemptId: string,
+  ) {
+    if (!sessionId || !burnAttemptId) return { success: false, status: 'invalid_request' };
+    const result = await this.sessionService.delete(sessionId, burnAttemptId);
+    if (result.status === 'already_deleted') {
+      return { success: true, status: result.status };
+    }
+    if (result.status !== 'deleted') {
+      return { success: false, status: result.status };
+    }
 
-    if (data.messages.length > 0) {
+    if (result.data.messages.length > 0) {
       try {
-        const history = data.messages
+        const history = result.data.messages
           .map((m) => `${m.role === 'user' ? '유저' : 'AI'}: ${m.content}`)
           .join('\n');
         const summary = await this.openai.chat.completions.create({
@@ -55,6 +63,6 @@ export class SessionController {
       }
     }
 
-    return { success: true };
+    return { success: true, status: result.status };
   }
 }
